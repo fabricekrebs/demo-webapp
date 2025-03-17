@@ -31,7 +31,30 @@ Install the required dependencies using `pip`:
 pip install -r requirements.txt
 ```
 
-### 4. Run the Server
+### 4. Run a Local PostgreSQL Server (Development Only)
+
+To run a local PostgreSQL server for development, use the following command:
+
+```bash
+docker run -p 5432:5432 --name postgres --network podman -e POSTGRES_PASSWORD=mypassword -d postgres:16.8
+```
+
+To refresh the PostgreSQL server, execute the following commands:
+
+```bash
+docker stop postgres
+docker rm postgres
+docker run -p 5432:5432 --name postgres --network podman -e POSTGRES_PASSWORD=mypassword -d postgres:16.8
+```
+
+### 5. Run the Server
+
+Before running the server, apply the migrations:
+
+```bash
+python manage.py makemigrations myapp
+python manage.py migrate
+```
 
 Run the Django development server:
 
@@ -41,7 +64,7 @@ python manage.py runserver
 
 The server will start, and you can access the application at `http://127.0.0.1:8000/`.
 
-### 5. Additional Commands
+### 6. Additional Commands
 
 - To apply migrations:
   ```bash
@@ -58,7 +81,7 @@ The server will start, and you can access the application at `http://127.0.0.1:8
   python manage.py collectstatic
   ```
 
-### 6. Build Docker Image
+### 7. Build Docker Image
 
 To build the Docker image for the application, use the following command:
 
@@ -66,7 +89,7 @@ To build the Docker image for the application, use the following command:
 docker build -t demo-webapp:latest .
 ```
 
-### 7. Tag and Push Docker Image
+### 8. Tag and Push Docker Image
 
 To tag the Docker image and push it to a registry, use the following commands:
 
@@ -77,7 +100,7 @@ docker push your-registry/demo-webapp:latest
 
 Replace `your-registry` with the actual registry URL.
 
-### 8. Run Docker Container
+### 9. Run Docker Container
 
 To run the Docker container, use the following command:
 

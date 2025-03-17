@@ -8,13 +8,21 @@
 <body>
     <div class="container">
         <h1 class="mt-5">Task List</h1>
+        <p>Frontend Address: {{ request.build_absolute_uri }}</p>
+        <p>Backend Address: {{ backend_address }}/api/tasks/</p>
+        <p>Database Hostname: {{ db_host }}</p>
         <button id="refresh-btn" class="btn btn-primary mb-3">Refresh</button>
         <button id="add-task-btn" class="btn btn-success mb-3" data-toggle="modal" data-target="#taskModal">Add Task</button>
         <table class="table table-striped mt-3">
             <thead>
                 <tr>
                     <th>Title</th>
-                    <th>Status</th>
+                    <th>Description</th>
+                    <th>Owner</th>
+                    <th>Creation Date</th>
+                    <th>Due Date</th>
+                    <th>Duration</th>
+                    <th>Priority</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -43,10 +51,24 @@
                             <textarea class="form-control" id="task-description" rows="3" required></textarea>
                         </div>
                         <div class="form-group">
-                            <label for="task-completed">Completed</label>
-                            <select class="form-control" id="task-completed">
-                                <option value="false">No</option>
-                                <option value="true">Yes</option>
+                            <label for="task-owner">Owner</label>
+                            <input type="text" class="form-control" id="task-owner" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="task-due-date">Due Date</label>
+                            <input type="datetime-local" class="form-control" id="task-due-date">
+                        </div>
+                        <div class="form-group">
+                            <label for="task-duration">Duration (in seconds)</label>
+                            <input type="number" class="form-control" id="task-duration">
+                        </div>
+                        <div class="form-group">
+                            <label for="task-priority">Priority</label>
+                            <select class="form-control" id="task-priority">
+                                <option value="1">High</option>
+                                <option value="2">Medium</option>
+                                <option value="3">Low</option>
+                                <option value="4">Very Low</option>
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary">Save Task</button>
@@ -69,7 +91,12 @@
                     tasks.forEach(function(task) {
                         const row = $('<tr></tr>');
                         row.append($('<td></td>').text(task.title));
-                        row.append($('<td></td>').text(task.completed));
+                        row.append($('<td></td>').text(task.description));
+                        row.append($('<td></td>').text(task.owner));
+                        row.append($('<td></td>').text(new Date(task.creation_date).toLocaleString()));
+                        row.append($('<td></td>').text(task.due_date ? new Date(task.due_date).toLocaleString() : ''));
+                        row.append($('<td></td>').text(task.duration ? task.duration : ''));
+                        row.append($('<td></td>').text(task.priority));
                         const deleteButton = $('<button></button>')
                             .addClass('btn btn-danger btn-sm')
                             .text('Delete')
@@ -113,7 +140,10 @@
                 const newTask = {
                     title: $('#task-title').val(),
                     description: $('#task-description').val(),
-                    completed: $('#task-completed').val() === 'true'
+                    owner: $('#task-owner').val(),
+                    due_date: $('#task-due-date').val(),
+                    duration: $('#task-duration').val(),
+                    priority: $('#task-priority').val()
                 };
 
                 $.ajax({
