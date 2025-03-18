@@ -1,78 +1,87 @@
 ## How to install on a Ubuntu server 24.04
 
 ## Update package lists
-```sh
+```bash
 sudo apt-get update
 ```
 
 ## Install necessary packages
-```sh
+```bash
 sudo apt install gh python3-pip python3-venv nginx podman -y
 ```
 
-## Configure container registries
-```sh
+## (Optional) Run PostgreSQL container
+<details>
+
+### Install podman
+```bash
+sudo apt install podman -y
+```
+
+### Configure container registries
+```bash
 sudo bash -c 'cat <<EOF > /etc/containers/registries.conf
 [registries.search]
 registries = ["docker.io"]
 EOF'
 ```
 
-## Run PostgreSQL container
 > **Warning:** Ensure to modify this password, and define it in the .env file later in this guide.
-```sh
+```bash
 sudo podman run \
-  -p 5432:5432 \
-  --name postgres \
-  --network podman \
-  -e POSTGRES_PASSWORD=mypassword \
-  -d postgres:16.8
+    -p 5432:5432 \
+    --name postgres \
+    --network podman \
+    -e POSTGRES_PASSWORD=mypassword \
+    -d postgres:16.8
 ```
 
+</details>
+
 ## Authenticate GitHub CLI
-```sh
+```bash
 gh auth login
 ```
 
 ## Add a new user for gunicorn
-```sh
+```bash
 sudo adduser --disabled-password --gecos "" gunicorn
 ```
 
 ## Navigate to /srv directory
-```sh
+```bash
 cd /srv
 ```
 
 ## Create and set permissions for the demowebapp directory
-```sh
+```bash
 sudo mkdir demowebapp
 sudo chown $USER demowebapp
 cd demowebapp/
 ```
 
 ## Clone the repository
-```sh
+```bash
 gh repo clone https://github.com/fabricekrebs/demo-webapp.git .
 ```
 
 ## Set up Python virtual environment
-```sh
+```bash
 python3 -m venv venv
 ```
 
 ## Activate virtual environment
-```sh
+```bash
 source venv/bin/activate
 ```
 
 ## Install required Python packages
-```sh
+```bash
 pip install -r requirements.txt
 ```
 
 ## Create gunicorn socket file
-```sh
+```bash
 cat <<EOF >> /tmp/gunicorn.socket
 [Unit]
 Description=gunicorn socket
@@ -86,12 +95,12 @@ EOF
 ```
 
 ## Move gunicorn socket file to systemd directory
-```sh
+```bash
 sudo mv /tmp/gunicorn.socket /etc/systemd/system/gunicorn.socket
 ```
 
 ## Create gunicorn service file
-```sh
+```bash
 cat <<EOF >> /tmp/gunicorn.service
 [Unit]
 Description=gunicorn daemon
@@ -114,23 +123,23 @@ EOF
 ```
 
 ## Move gunicorn service file to systemd directory
-```sh
+```bash
 sudo mv /tmp/gunicorn.service /etc/systemd/system/gunicorn.service
 ```
 
 ## Start and enable gunicorn socket
-```sh
+```bash
 sudo systemctl start gunicorn.socket
 sudo systemctl enable gunicorn.socket
 ```
 
 ## Create nginx configuration file for the application
-> **Warning:** Ensure to change the server_domain_or_IP with the correct external IP.
-```sh
+> **Warning:** Ensure to change the server-domain-or-IP with the correct external IP.
+```bash
 cat <<EOF >> /tmp/demowebapp
 server {
     listen 80;
-    server_name server_domain_or_IP;
+    server_name server-domain-or-IP;
 
     location = /favicon.ico { access_log off; log_not_found off; }
     location /static/ {
@@ -145,28 +154,28 @@ server {
 EOF
 ```
 ## Move nginx configuration file to sites-available directory
-```sh
+```bash
 sudo mv /tmp/demowebapp /etc/nginx/sites-available/demowebapp
 ```
 
 ## Enable the nginx site configuration
-```sh
+```bash
 sudo ln -s /etc/nginx/sites-available/demowebapp /etc/nginx/sites-enabled
 ```
 
 ## Restart nginx to apply changes
-```sh
+```bash
 sudo systemctl restart nginx
 ```
 
 ## Create environment variables file
 > **Warning:** Adapt the file accordingly to your setup
-```sh
+```bash
 cat <<EOF >> .env
-SECRET_KEY=6515165131asdfasdfasd3f1s5df1sad23adsf
+SECRET_KEY=you-secret-key
 DEBUG=True
 ALLOWED_HOSTS=*
-BACKEND_ADDRESS=http://server_domain_or_IP:8000
+BACKEND_ADDRESS=http://server-domain-or-IP:8000
 TIME_ZONE=CET
 CORS_ALLOW_ALL_ORIGINS=True
 DB_USER=postgres
@@ -178,19 +187,24 @@ EOF
 ```
 
 ## Restart gunicorn to apply changes
-```sh
+```bash
 sudo systemctl restart gunicorn
 ```
 
 ## Apply database migrations
-```sh
+```bash
 ./manage.py makemigrations
 ./manage.py migrate
 ```
 
 ## Create a superuser for the application
-```sh
+```bash
 ./manage.py createsuperuser
 ```
+
+## (Optional) Populate randomn tasks
+```bash
+./manage.py populate_tasks
+
 
 The website should be accessible at the public address defined.

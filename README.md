@@ -114,4 +114,13 @@ To run the container in detached mode, add the `-d` flag:
 docker run -d -p 8000:8000 --network podman demo-webapp:latest
 ```
 
+
+### (Optional) Populate randomn tasks
+Connect to the running container, and execute the following action
+```bash
+./manage.py populate_tasks
+```
+
+The website should be accessible at the public address defined.
+
 Make sure to follow these steps to set up and run the demo-webapp successfully.
