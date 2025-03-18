@@ -146,4 +146,4 @@ BACKEND_ADDRESS = os.getenv('BACKEND_ADDRESS', 'http://localhost:8000')
 
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True').lower() in ('true', '1', 't')
 
-CSRF_TRUSTED_ORIGINS = ["os.getenv('CSRF_TRUSTED_ORIGINS', 'http://*.krfa-lab.com:8000')"]
+CSRF_TRUSTED_ORIGINS = [os.getenv('CSRF_TRUSTED_ORIGINS', 'http://*.krfa-lab.com:8000')]
