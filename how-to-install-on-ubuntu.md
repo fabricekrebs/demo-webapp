@@ -183,6 +183,7 @@ DB_PASSWORD=mypassword
 DB_NAME=postgres
 DB_HOST=localhost
 DB_PORT=5432
+CSRF_TRUSTED_ORIGINS=http://server-domain-or-IP
 EOF
 ```
 
