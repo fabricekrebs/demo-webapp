@@ -4,3 +4,4 @@ requests  # Simple, yet elegant HTTP library for Python.
 django-cors-headers  # Django app for handling the server headers required for Cross-Origin Resource Sharing (CORS).
 python-dotenv  # Reads key-value pairs from a .env file and can set them as environment variables.
 psycopg2-binary  # PostgreSQL database adapter for Python.
+gunicorn

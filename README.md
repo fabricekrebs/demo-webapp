@@ -105,13 +105,13 @@ Replace `your-registry` with the actual registry URL.
 To run the Docker container, use the following command:
 
 ```bash
-docker run -p 8000:8000 --network yournetwork demo-webapp:latest
+docker run -p 8000:8000 --network podman demo-webapp:latest
 ```
 
 To run the container in detached mode, add the `-d` flag:
 
 ```bash
-docker run -d -p 8000:8000 --network yournetwork demo-webapp:latest
+docker run -d -p 8000:8000 --network podman demo-webapp:latest
 ```
 
 Make sure to follow these steps to set up and run the demo-webapp successfully.
