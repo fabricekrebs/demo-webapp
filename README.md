@@ -1,6 +1,7 @@
 # demo-webapp
 
-## Setup Instructions
+## Local developpment Setup Instructions
+<details>
 
 ### 1. Create a Virtual Environment
 
@@ -80,8 +81,12 @@ The server will start, and you can access the application at `http://127.0.0.1:8
   ```bash
   python manage.py collectstatic
   ```
+</details>
 
-### 7. Build Docker Image
+## Generate a docker image
+<details>
+
+### Build Docker Image
 
 To build the Docker image for the application, use the following command:
 
@@ -89,7 +94,7 @@ To build the Docker image for the application, use the following command:
 docker build -t demo-webapp:latest .
 ```
 
-### 8. Tag and Push Docker Image
+### Tag and Push Docker Image
 
 To tag the Docker image and push it to a registry, use the following commands:
 
@@ -100,7 +105,7 @@ docker push your-registry/demo-webapp:latest
 
 Replace `your-registry` with the actual registry URL.
 
-### 9. Run Docker Container
+### Run Docker Container
 
 To run the Docker container, use the following command:
 
@@ -113,14 +118,12 @@ To run the container in detached mode, add the `-d` flag:
 ```bash
 docker run -d -p 8000:8000 --network podman demo-webapp:latest
 ```
-
+</details>
 
 ### (Optional) Populate randomn tasks
-Connect to the running container, and execute the following action
+Execute the following action which will populate random task in the database
 ```bash
 ./manage.py populate_tasks
 ```
-
-The website should be accessible at the public address defined.
 
 Make sure to follow these steps to set up and run the demo-webapp successfully.

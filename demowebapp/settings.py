@@ -143,6 +143,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_HEADERS = "*"
 
 BACKEND_ADDRESS = os.getenv('BACKEND_ADDRESS', 'http://localhost:8000')
+BACKEND_SAME_HOST = os.getenv('BACKEND_SAME_HOST', 'True') #define if the backend is on the same host as the frontend
 
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True').lower() in ('true', '1', 't')
 
