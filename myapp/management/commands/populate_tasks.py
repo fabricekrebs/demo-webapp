@@ -7,7 +7,16 @@ from datetime import timedelta
 class Command(BaseCommand):
     help = 'Populate the database with random tasks'
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--count',
+            type=int,
+            default=300,
+            help='Number of tasks to create (default: 300)'
+        )
+
     def handle(self, *args, **kwargs):
+        count = kwargs['count']
         Task.objects.all().delete()  # Clear existing tasks
 
         title_parts = [
@@ -28,7 +37,7 @@ class Command(BaseCommand):
 
         priorities = [1, 2, 3, 4]
 
-        for _ in range(300):
+        for _ in range(count):
             title = f"{random.choice(title_parts)} {random.choice(title_objects)}"
             description = f"{random.choice(description_parts)} {random.choice(description_objects)}"
             owner = random.choice(owners)
@@ -47,4 +56,4 @@ class Command(BaseCommand):
                 priority=priority
             )
 
-        self.stdout.write(self.style.SUCCESS('Successfully populated the database with 300 unique tasks'))
+        self.stdout.write(self.style.SUCCESS(f'Successfully populated the database with {count} unique tasks'))

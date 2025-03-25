@@ -23,8 +23,12 @@ Activate the virtual environment using the following command:
   ```bash
   source venv/bin/activate
   ```
+### 3. Configure Environment Variables
+Before proceeding, create a `.env` file in the root directory of the project or define the environment variables directly. Use the `.env.example` file as a reference for the required variables:
 
-### 3. Install Dependencies
+By default, the environment variables will take priority, and if none are defined, the ones defined in the `.venv` file under the root folder of the application will be used.
+
+### 4. Install Dependencies
 
 Install the required dependencies using `pip`:
 
@@ -32,7 +36,7 @@ Install the required dependencies using `pip`:
 pip install -r requirements.txt
 ```
 
-### 4. Run a Local PostgreSQL Server (Development Only)
+### 5. Run a Local PostgreSQL Server (Development Only)
 
 To run a local PostgreSQL server for development, use the following command:
 
@@ -48,7 +52,7 @@ docker rm postgres
 docker run -p 5432:5432 --name postgres --network podman -e POSTGRES_PASSWORD=mypassword -d postgres:16.8
 ```
 
-### 5. Run the Server
+### 6. Run the Server
 
 Before running the server, apply the migrations:
 
@@ -65,7 +69,7 @@ python manage.py runserver
 
 The server will start, and you can access the application at `http://127.0.0.1:8000/`.
 
-### 6. Additional Commands
+### 7. Additional Commands
 
 - To apply migrations:
   ```bash
@@ -118,12 +122,33 @@ To run the container in detached mode, add the `-d` flag:
 ```bash
 docker run -d -p 8000:8000 --network podman demo-webapp:latest
 ```
+
+To run the Docker container with environment variables, use the following command:
+
+```bash
+docker run -d -p 8000:8000 --network podman \
+  -e DB_USER=postgres \
+  -e DB_PASSWORD=your-db-password \
+  -e DB_NAME=postgres \
+  -e DB_HOST=localhost \
+  -e DB_PORT=5432 \
+  demo-webapp:latest
+```
 </details>
 
-### (Optional) Populate randomn tasks
-Execute the following action which will populate random task in the database
+### (Optional) Populate random tasks
+Execute the following command to populate random tasks in the database:
+
 ```bash
 ./manage.py populate_tasks
 ```
+
+By default, this will create 300 tasks. To specify a different number of tasks, use the `--count` parameter:
+
+```bash
+./manage.py populate_tasks --count 100
+```
+
+Replace `100` with the desired number of tasks to create.
 
 Make sure to follow these steps to set up and run the demo-webapp successfully.
