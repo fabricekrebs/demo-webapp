@@ -8,10 +8,8 @@ WORKDIR /app
 COPY . /app
 
 # Make the startup script executable
-RUN chmod +x /app/start.sh
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN chmod +x /app/start.sh && \
+    apt-get update && apt-get install -y \
     libpq-dev \
     python3-dev \
     python3-psycopg2 \
