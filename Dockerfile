@@ -8,15 +8,12 @@ WORKDIR /app
 COPY . /app
 
 # Make the startup script executable
-RUN chmod +x /app/start.sh && \
-    apt-get update && apt-get install -y \
+RUN chmod +x /app/start.sh && apt-get update && apt-get install -y \
     libpq-dev \
     python3-dev \
     python3-psycopg2 \
-    && apt-get clean
-
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+    && apt-get clean \
+    pip install --no-cache-dir -r requirements.txt
 
 # Make port 8000 available to the world outside this container
 EXPOSE 8000
