@@ -11,8 +11,9 @@ COPY . /app
 RUN chmod +x /app/start.sh && apt-get update && apt-get install -y \
     libpq-dev \
     python3-dev \
-    python3-psycopg2 \
-    && apt-get clean \
+    python3-psycopg2 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
     pip install --no-cache-dir -r requirements.txt
 
 # Make port 8000 available to the world outside this container
