@@ -13,9 +13,50 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+import sys
 
 # Load environment variables from .env file
 load_dotenv()
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "level": "INFO",
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": True,
+        },
+        "config": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+}
+
+# Azure Monitor OpenTelemetry integration (optional, controlled by env var)
+ENABLE_AZURE_MONITOR = os.getenv('ENABLE_AZURE_MONITOR', 'False').lower() in ('true', '1', 't')
+if ENABLE_AZURE_MONITOR:
+    from azure.monitor.opentelemetry import configure_azure_monitor
+
+    configure_azure_monitor(
+        connection_string=os.getenv('APPLICATIONINSIGHTS_CONNECTION_STRING'),
+        enable_live_metrics=os.getenv('ENABLE_LIVE_METRICS', 'False').lower() in ('true', '1', 't'),
+    )
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

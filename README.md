@@ -151,4 +151,13 @@ By default, this will create 300 tasks. To specify a different number of tasks, 
 
 Replace `100` with the desired number of tasks to create.
 
+## Logger Test Page
+
+A logger test page is available at `/logger/`. When you visit this page in your browser, it will:
+
+- Trigger a Django log entry with the message `Logger is working!` (visible in your server logs)
+- Display a confirmation web page
+
+This is useful for verifying that Django logging is working correctly in your environment. Check your server logs after visiting `/logger/` to confirm the log entry appears.
+
 Make sure to follow these steps to set up and run the demo-webapp successfully.
