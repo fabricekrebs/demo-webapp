@@ -22,17 +22,17 @@ spec:
             - name: APPLICATIONINSIGHTS_CONNECTION_STRING
               valueFrom:
                 secretKeyRef:
-                  name: applicationConnectionString
+                  name: application-connection-string
                   key: secret
             - name: SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: secretKey
+                  name: secret-key
                   key: secret
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: dbPassword
+                  name: db-password
                   key: secret
           envFrom:
             - configMapRef:
