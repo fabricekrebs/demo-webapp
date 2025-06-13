@@ -3,6 +3,8 @@ kind: Kustomization
 metadata:
   name: demo-webapp
 
+namespace: demo-webapp
+
 # Example configuration for the webserver
 # at https://github.com/monopole/hello
 commonLabels:
