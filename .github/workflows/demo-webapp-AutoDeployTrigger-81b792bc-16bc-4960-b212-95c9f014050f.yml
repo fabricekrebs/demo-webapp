@@ -31,11 +31,26 @@ jobs:
           tenant-id: ${{ secrets.DEMOWEBAPP_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.DEMOWEBAPP_AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build and push container image to registry
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Azure Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: acritalynorth01.azurecr.io
+          username: ${{ secrets.DEMOWEBAPP_REGISTRY_USERNAME }}
+          password: ${{ secrets.DEMOWEBAPP_REGISTRY_PASSWORD }}
+
+      - name: Build and push Docker images (sha and latest)
+        run: |
+          docker build -t acritalynorth01.azurecr.io/demo-webapp:${{ github.sha }} -t acritalynorth01.azurecr.io/demo-webapp:latest .
+          docker push acritalynorth01.azurecr.io/demo-webapp:${{ github.sha }}
+          docker push acritalynorth01.azurecr.io/demo-webapp:latest
+
+      - name: Deploy to Azure Container Apps
         uses: azure/container-apps-deploy-action@v2
         with:
           appSourcePath: ${{ github.workspace }}
-          _dockerfilePathKey_: _dockerfilePath_
           registryUrl: acritalynorth01.azurecr.io
           registryUsername: ${{ secrets.DEMOWEBAPP_REGISTRY_USERNAME }}
           registryPassword: ${{ secrets.DEMOWEBAPP_REGISTRY_PASSWORD }}
