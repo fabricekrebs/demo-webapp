@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-webapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-webapp
+  template:
+    metadata:
+      labels:
+        app: demo-webapp
+    spec:
+      containers:
+        - name: demo-webapp
+          image: <your-django-image>:latest # Replace with your image
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: demo-webapp-env

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-webapp-env
+data:
+  SECRET_KEY: ""
+  DEBUG: ""
+  ALLOWED_HOSTS: ""
+  BACKEND_ADDRESS: ""
+  BACKEND_SAME_HOST: ""
+  TIME_ZONE: ""
+  CORS_ALLOW_ALL_ORIGINS: ""
+  CSRF_TRUSTED_ORIGINS: ""
+  DB_USER: ""
+  DB_PASSWORD: ""
+  DB_NAME: ""
+  DB_HOST: ""
+  DB_PORT: ""
+  ENABLE_AZURE_MONITOR: ""
+  APPLICATIONINSIGHTS_CONNECTION_STRING: ""
+  ENABLE_LIVE_METRICS: ""
