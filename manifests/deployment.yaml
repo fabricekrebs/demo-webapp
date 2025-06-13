@@ -37,3 +37,14 @@ spec:
           envFrom:
             - configMapRef:
                 name: demo-webapp-env
+          volumeMounts:
+          - name: kv-italynorth-aks-01
+            mountPath: "/mnt/secrets-store"
+            readOnly: true
+      volumes:
+        - name: kv-italynorth-aks-01
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "kv-italynorth-aks-01"
