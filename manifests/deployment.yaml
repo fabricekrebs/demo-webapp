@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: demo-webapp
-          image: <your-django-image>:latest # Replace with your image
+          image: acritalynorth01.azurecr.io/demo-webapp::latest # Replace with your image
           ports:
             - containerPort: 8000
           envFrom:
