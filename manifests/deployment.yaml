@@ -18,6 +18,22 @@ spec:
           image: acritalynorth01.azurecr.io/demo-webapp:latest # Replace with your image
           ports:
             - containerPort: 8000
+          env:
+            - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: applicationConnectionString
+                  key: secret
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secretKey
+                  key: secret
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dbPassword
+                  key: secret
           envFrom:
             - configMapRef:
                 name: demo-webapp-env

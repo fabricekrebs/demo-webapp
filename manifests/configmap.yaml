@@ -4,7 +4,6 @@ metadata:
   name: demo-webapp-env
   namespace: demo-webapp
 data:
-  SECRET_KEY: ""
   DEBUG: ""
   ALLOWED_HOSTS: ""
   BACKEND_ADDRESS: ""
@@ -13,10 +12,8 @@ data:
   CORS_ALLOW_ALL_ORIGINS: ""
   CSRF_TRUSTED_ORIGINS: ""
   DB_USER: ""
-  DB_PASSWORD: ""
   DB_NAME: ""
   DB_HOST: ""
   DB_PORT: ""
   ENABLE_AZURE_MONITOR: ""
-  APPLICATIONINSIGHTS_CONNECTION_STRING: ""
   ENABLE_LIVE_METRICS: ""
