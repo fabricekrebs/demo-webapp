@@ -11,6 +11,7 @@ commonLabels:
   app: demo-webapp
 
 resources:
+  - namespace.yaml
   - secretproviderclass.yaml
   - deployment.yaml
   - service.yaml
