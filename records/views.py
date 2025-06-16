@@ -6,6 +6,7 @@ from datetime import datetime
 def task_list(request):
     if settings.BACKEND_SAME_HOST == 'True':
         scheme = 'https' if request.is_secure() else 'http'
+        
         backendAddress = f"{scheme}://{request.get_host()}"
     else:
         backendAddress = settings.BACKEND_ADDRESS

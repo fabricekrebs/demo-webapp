@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-webapp
+  namespace: demo-webapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-webapp
+  template:
+    metadata:
+      labels:
+        app: demo-webapp
+    spec:
+      containers:
+        - name: demo-webapp
+          image: acritalynorth01.azurecr.io/demo-webapp:latest # Replace with your image
+          ports:
+            - containerPort: 8000
+          env:
+            - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: application-connection-string
+                  key: secret
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secret-key
+                  key: secret
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-password
+                  key: secret
+          envFrom:
+            - configMapRef:
+                name: demo-webapp-env
+          volumeMounts:
+          - name: kv-italynorth-aks-01
+            mountPath: "/mnt/secrets-store"
+            readOnly: true
+      volumes:
+        - name: kv-italynorth-aks-01
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "kv-italynorth-aks-01"
