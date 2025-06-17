@@ -136,20 +136,20 @@ docker run -d -p 8000:8000 --network podman \
 ```
 </details>
 
-### (Optional) Populate random tasks
-Execute the following command to populate random tasks in the database:
+### (Optional) Populate dummy data
+Execute the following command to populate dummy users, projects, and random tasks in the database:
 
 ```bash
-./manage.py populate_tasks
+./manage.py populate_dummy_data
 ```
 
-By default, this will create 300 tasks. To specify a different number of tasks, use the `--count` parameter:
+By default, this will create 5 users, 5 projects, and 50 tasks. To specify a different number of tasks, use the `--count` parameter:
 
 ```bash
-./manage.py populate_tasks --count 100
+./manage.py populate_dummy_data --count 100
 ```
 
-Replace `100` with the desired number of tasks to create.
+Replace `100` with the desired number of tasks to create. The users and projects will always be 5 each.
 
 ## Logger Test Page
 

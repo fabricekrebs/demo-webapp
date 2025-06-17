@@ -6,14 +6,14 @@ from django.utils import timezone
 from datetime import timedelta
 
 class Command(BaseCommand):
-    help = 'Populate the database with random tasks, users, and projects'
+    help = 'Populate the database with dummy users, projects, and random tasks'
 
     def add_arguments(self, parser):
         parser.add_argument(
             '--count',
             type=int,
-            default=300,
-            help='Number of tasks to create (default: 300)'
+            default=50,
+            help='Number of tasks to create (default: 50)'
         )
 
     def handle(self, *args, **kwargs):
@@ -22,14 +22,14 @@ class Command(BaseCommand):
         Project.objects.all().delete()  # Clear existing projects
         User.objects.exclude(is_superuser=True).delete()  # Clear non-superusers
 
-        # Create users
-        user_names = ['alice', 'bob', 'charlie', 'david', 'eve', 'frank', 'grace', 'hank', 'ivy', 'jack']
+        # Create 5 dummy users
+        user_names = ['alice', 'bob', 'charlie', 'david', 'eve']
         users = []
         for name in user_names:
             user, _ = User.objects.get_or_create(username=name, defaults={'email': f'{name}@example.com'})
             users.append(user)
 
-        # Create projects
+        # Create 5 dummy projects
         project_names = [
             ('Apollo', 'Space mission project.'),
             ('Mercury', 'First human spaceflight program.'),
@@ -79,4 +79,4 @@ class Command(BaseCommand):
                 priority=priority
             )
 
-        self.stdout.write(self.style.SUCCESS(f'Successfully populated the database with {count} tasks, {len(users)} users, and {len(projects)} projects'))
+        self.stdout.write(self.style.SUCCESS(f'Successfully populated the database with {count} tasks, 5 users, and 5 projects'))
