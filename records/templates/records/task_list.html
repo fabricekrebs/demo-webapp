@@ -8,6 +8,7 @@
 <body>
     <div class="container">
         <h1 class="mt-5">Task List</h1>
+        <button onclick="window.location.href='/projects/'" class="btn btn-secondary mb-3">Manage Projects</button>
         <p>Backend Address: {{ backend_address }}/api/tasks/</p>
         <p>Database Hostname: {{ db_host }}</p>
         <button id="refresh-btn" class="btn btn-primary mb-3">Refresh</button>
@@ -18,6 +19,7 @@
                     <th>Title</th>
                     <th>Description</th>
                     <th>Owner</th>
+                    <th>Project</th>
                     <th>Creation Date</th>
                     <th>Due Date</th>
                     <th>Duration</th>
@@ -51,7 +53,11 @@
                         </div>
                         <div class="form-group">
                             <label for="task-owner">Owner</label>
-                            <input type="text" class="form-control" id="task-owner" required>
+                            <select class="form-control" id="task-owner" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="task-project">Project</label>
+                            <select class="form-control" id="task-project"></select>
                         </div>
                         <div class="form-group">
                             <label for="task-due-date">Due Date</label>
@@ -80,6 +86,67 @@
     <script>
         const backendAddress = "{{ backend_address }}";
 
+        // CSRF helper functions
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+
+        // Setup AJAX to include CSRF token for unsafe methods
+        $.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+                if (!(/^GET|HEAD|OPTIONS|TRACE$/i.test(settings.type)) && !this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                }
+            }
+        });
+
+        function fetchUsers() {
+            $.ajax({
+                url: backendAddress + '/api/users/',
+                method: 'GET',
+                success: function(users) {
+                    const ownerSelect = $('#task-owner');
+                    ownerSelect.empty();
+                    users.forEach(function(user) {
+                        ownerSelect.append(`<option value="${user.id}">${user.username}</option>`);
+                    });
+                },
+                error: function(error) {
+                    console.error('Error fetching users:', error);
+                }
+            });
+        }
+
+        function fetchProjectsDropdown() {
+            $.ajax({
+                url: backendAddress + '/api/projects/',
+                method: 'GET',
+                success: function(projects) {
+                    const projectSelect = $('#task-project');
+                    projectSelect.empty();
+                    projectSelect.append('<option value="">No Project</option>');
+                    projects.forEach(function(project) {
+                        projectSelect.append(`<option value="${project.id}">${project.name}</option>`);
+                    });
+                },
+                error: function(error) {
+                    console.error('Error fetching projects for dropdown:', error);
+                }
+            });
+        }
+
         function fetchTasks() {
             $.ajax({
                 url: backendAddress + '/api/tasks/',
@@ -91,7 +158,8 @@
                         const row = $('<tr></tr>');
                         row.append($('<td></td>').text(task.title));
                         row.append($('<td></td>').text(task.description));
-                        row.append($('<td></td>').text(task.owner));
+                        row.append($('<td></td>').text(task.owner && task.owner.username ? task.owner.username : ''));
+                        row.append($('<td></td>').text(task.project && task.project.name ? task.project.name : ''));
                         row.append($('<td></td>').text(new Date(task.creation_date).toLocaleString()));
                         row.append($('<td></td>').text(task.due_date ? new Date(task.due_date).toLocaleString() : ''));
                         row.append($('<td></td>').text(task.duration ? task.duration : ''));
@@ -129,17 +197,32 @@
 
         $(document).ready(function() {
             fetchTasks();
+            fetchUsers();
+            fetchProjectsDropdown();
 
             $('#refresh-btn').click(function() {
                 fetchTasks();
             });
 
+            $('#add-task-btn').click(function() {
+                fetchUsers();
+                fetchProjectsDropdown();
+                // Set due date to 7 days from now
+                const now = new Date();
+                const in7days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+                const pad = n => n.toString().padStart(2, '0');
+                const localDateTime = `${in7days.getFullYear()}-${pad(in7days.getMonth()+1)}-${pad(in7days.getDate())}T${pad(in7days.getHours())}:${pad(in7days.getMinutes())}`;
+                $('#task-due-date').val(localDateTime);
+            });
+
             $('#task-form').submit(function(event) {
                 event.preventDefault();
+                const projectId = $('#task-project').val();
                 const newTask = {
                     title: $('#task-title').val(),
                     description: $('#task-description').val(),
-                    owner: $('#task-owner').val(),
+                    owner: $('#task-owner').val(), // send user id only
+                    project_id: projectId || null, // send project id or null
                     due_date: $('#task-due-date').val(),
                     duration: $('#task-duration').val(),
                     priority: $('#task-priority').val()

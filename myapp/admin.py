@@ -1,11 +1,10 @@
 from django.contrib import admin
-
-# Register your models here.
-from .models import Task
+from .models import Task, Project
 
 class TaskAdmin(admin.ModelAdmin):
-    list_display = ('title', 'owner', 'creation_date', 'due_date', 'priority')
-    search_fields = ('title', 'description', 'owner__username')
-    list_filter = ('priority', 'creation_date', 'due_date')
+    list_display = ('title', 'owner', 'project', 'creation_date', 'due_date', 'priority')
+    search_fields = ('title', 'description', 'owner__username', 'project__name')
+    list_filter = ('priority', 'creation_date', 'due_date', 'project')
 
 admin.site.register(Task, TaskAdmin)
+admin.site.register(Project)
