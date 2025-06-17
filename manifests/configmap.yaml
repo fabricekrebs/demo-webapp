@@ -16,4 +16,4 @@ data:
   DB_HOST: "demo-webapp-aks-01.postgres.database.azure.com"
   DB_PORT: "5432"
   ENABLE_AZURE_MONITOR: "True"
-  ENABLE_LIVE_METRICS: "False"
+  ENABLE_LIVE_METRICS: "True"
