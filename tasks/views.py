@@ -16,7 +16,7 @@ def task_list(request):
         'db_host': settings.DB_HOST,
     }
 
-    return render(request, 'records/task_list.html', context)
+    return render(request, 'tasks/task_list.html', context)
 
 def project_list(request):
     if settings.BACKEND_SAME_HOST == 'True':
@@ -28,9 +28,9 @@ def project_list(request):
         'backend_address': backendAddress,
         'db_host': settings.DB_HOST,
     }
-    return render(request, 'records/project_list.html', context)
+    return render(request, 'tasks/project_list.html', context)
 
 def logger_view(request):
     logger = logging.getLogger("django")
     logger.info(f"Logger is working! Current time: {datetime.now().isoformat()}")
-    return render(request, 'records/logger.html')
+    return render(request, 'tasks/logger.html')

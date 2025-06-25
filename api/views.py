@@ -1,7 +1,7 @@
 from django.shortcuts import render
 
 from rest_framework import generics
-from .models import Task, Project
+from tasks.models import Task, Project
 from .serializers import TaskSerializer, ProjectSerializer, UserSerializer
 from django.contrib.auth.models import User
 
