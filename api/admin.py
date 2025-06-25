@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Task, Project
+from tasks.models import Task, Project
 
 class TaskAdmin(admin.ModelAdmin):
     list_display = ('title', 'owner', 'project', 'creation_date', 'due_date', 'priority')

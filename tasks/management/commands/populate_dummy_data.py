@@ -1,6 +1,6 @@
 import random
 from django.core.management.base import BaseCommand
-from myapp.models import Task, Project
+from tasks.models import Task, Project
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta

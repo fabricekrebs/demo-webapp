@@ -57,7 +57,7 @@ docker run -p 5432:5432 --name postgres --network podman -e POSTGRES_PASSWORD=my
 Before running the server, apply the migrations:
 
 ```bash
-python manage.py makemigrations myapp
+python manage.py makemigrations tasks
 python manage.py migrate
 ```
 
