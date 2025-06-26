@@ -26,6 +26,29 @@ Activate the virtual environment using the following command:
 ### 3. Configure Environment Variables
 Before proceeding, create a `.env` file in the root directory of the project or define the environment variables directly. Use the `.env.example` file as a reference for the required variables:
 
+#### Chatbot Integration
+To enable the chatbot, you must set the following Azure AI Foundry variables in your `.env` file:
+
+```
+AZURE_FOUNDRY_ENDPOINT=<your-azure-endpoint>
+AZURE_FOUNDRY_KEY=<your-azure-key>
+AZURE_FOUNDRY_AGENT_ID=<your-agent-id>
+```
+
+If these are not set, the chatbot UI will be disabled and a warning will be shown.
+
+**Azure AI Foundry Setup Requirements:**
+
+To have the chatbot working, you must configure Azure AI Foundry as follows:
+
+1. **Azure AI Foundry Project**: Create a project in Azure AI Foundry.
+2. **Agent Creation**: Create an agent within your Azure AI Foundry project.
+3. **Agent Action (OpenAPI 3.0)**: Add an action to your agent of kind `OpenAPI 3.0`. For this action:
+    - Upload the `openapi-3.0.json` file from this repository.
+    - Ensure you specify the correct URL of your application frontend in the OpenAPI action configuration. This is required so the agent can make API requests to your app backend.
+
+If any of these steps are not completed, the chatbot will not function.
+
 By default, the environment variables will take priority, and if none are defined, the ones defined in the `.venv` file under the root folder of the application will be used.
 
 ### 4. Install Dependencies

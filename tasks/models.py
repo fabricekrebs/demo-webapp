@@ -21,3 +21,20 @@ class Task(models.Model):
 
     def __str__(self):
         return self.title
+
+class Chat(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    title = models.CharField(max_length=255, blank=True, null=True)
+    azure_thread_id = models.CharField(max_length=128, null=True, blank=True)
+
+    def __str__(self):
+        return self.title or f"Chat {self.id}"
+
+class ChatMessage(models.Model):
+    chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name='messages')
+    message = models.TextField()
+    is_bot = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{'Bot' if self.is_bot else 'User'}: {self.message[:30]}..."

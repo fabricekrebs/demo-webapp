@@ -7,3 +7,4 @@ psycopg2-binary  # PostgreSQL database adapter for Python.
 gunicorn
 azure-monitor-opentelemetry  # OpenTelemetry instrumentation for Azure Monitor.
 opencensus-ext-azure
+azure-ai-projects
