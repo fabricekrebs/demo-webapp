@@ -117,19 +117,43 @@
             });
     }
 
+    // CSRF token helper for Django
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
     document.getElementById('chat-select').addEventListener('change', function() {
         loadChat(this.value);
     });
 
     document.getElementById('new-chat').addEventListener('click', function() {
         showSpinner();
-        fetch(apiBase, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'})
-            .then(r => r.json())
-            .then(chat => {
-                fetchChats();
-                setTimeout(() => loadChat(chat.id), 500);
-            })
-            .finally(hideSpinner);
+        fetch(apiBase, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: '{}'
+        })
+        .then(r => r.json())
+        .then(chat => {
+            fetchChats();
+            setTimeout(() => loadChat(chat.id), 500);
+        })
+        .finally(hideSpinner);
     });
 
     document.getElementById('delete-chat').addEventListener('click', function() {
@@ -138,11 +162,16 @@
         if (!chatId) return;
         if (!confirm('Are you sure you want to delete this conversation?')) return;
         showSpinner();
-        fetch(apiBase + chatId + '/', { method: 'DELETE' })
-            .then(() => {
-                fetchChats();
-            })
-            .finally(hideSpinner);
+        fetch(apiBase + chatId + '/', {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(() => {
+            fetchChats();
+        })
+        .finally(hideSpinner);
     });
 
     document.getElementById('chat-form').addEventListener('submit', function(e) {
@@ -153,7 +182,10 @@
         showSpinner();
         fetch(apiBase + currentChatId + '/messages/', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
             body: JSON.stringify({message: msg})
         })
         .then(r => r.json())

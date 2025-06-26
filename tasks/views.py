@@ -12,6 +12,7 @@ import requests
 import os
 from dotenv import load_dotenv
 from azure.ai.projects import AIProjectClient
+from azure.core.credentials import AzureKeyCredential
 from azure.identity import DefaultAzureCredential
 from azure.ai.agents.models import ListSortOrder
 from rest_framework.decorators import api_view
@@ -78,11 +79,12 @@ class ChatMessageCreateView(APIView):
         try:
             endpoint = os.getenv('AZURE_FOUNDRY_ENDPOINT')
             agent_id = os.getenv('AZURE_FOUNDRY_AGENT_ID')
+
             thread_id = getattr(chat, 'azure_thread_id', None)
             if not endpoint or not agent_id:
                 return "[Azure Foundry not configured]"
 
-            # Initialize Azure AI Project Client
+            # Initialize Azure AI Project Client with API key
             project = AIProjectClient(
                 credential=DefaultAzureCredential(),
                 endpoint=endpoint
@@ -131,8 +133,12 @@ class ChatMessageCreateView(APIView):
 
 @api_view(['GET'])
 def chatbot_config(request):
-    endpoint = os.getenv('AZURE_FOUNDRY_ENDPOINT')
-    key = os.getenv('AZURE_FOUNDRY_KEY')
-    agent_id = os.getenv('AZURE_FOUNDRY_AGENT_ID')
-    enabled = bool(endpoint and endpoint.strip() and key and key.strip() and agent_id and agent_id.strip())
+    required_envs = [
+        'AZURE_FOUNDRY_ENDPOINT',
+        'AZURE_FOUNDRY_AGENT_ID',
+        'AZURE_CLIENT_ID',
+        'AZURE_TENANT_ID',
+        'AZURE_CLIENT_SECRET',
+    ]
+    enabled = all(os.getenv(var) is not None for var in required_envs)
     return Response({'enabled': enabled})

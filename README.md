@@ -24,14 +24,24 @@ Activate the virtual environment using the following command:
   source venv/bin/activate
   ```
 ### 3. Configure Environment Variables
-Before proceeding, create a `.env` file in the root directory of the project or define the environment variables directly. Use the `.env.example` file as a reference for the required variables:
+Before proceeding, create a `.env` file in the root directory of the project or define the environment variables directly. Use the `.env.example` file as a reference for the required variables.
+
+#### Azure Identity Setup
+To enable Azure authentication, you must set the following variables in your environment (or provide them via Key Vault in production):
+
+```
+AZURE_CLIENT_ID=<your-azure-client-id>
+AZURE_TENANT_ID=<your-azure-tenant-id>
+AZURE_CLIENT_SECRET=<your-azure-client-secret>
+```
+
+These are now managed via Azure Key Vault in Kubernetes deployments. Make sure your Key Vault contains these secrets and your cluster is configured to access them.
 
 #### Chatbot Integration
 To enable the chatbot, you must set the following Azure AI Foundry variables in your `.env` file:
 
 ```
 AZURE_FOUNDRY_ENDPOINT=<your-azure-endpoint>
-AZURE_FOUNDRY_KEY=<your-azure-key>
 AZURE_FOUNDRY_AGENT_ID=<your-agent-id>
 ```
 
