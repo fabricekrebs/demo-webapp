@@ -34,6 +34,16 @@ spec:
                 secretKeyRef:
                   name: db-password
                   key: secret
+            - name: AZURE_FOUNDRY_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: azure-ai-foundry-key
+                  key: secret
+            - name: AZURE_FOUNDRY_AGENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-ai-foundry-agent-id
+                  key: secret
           envFrom:
             - configMapRef:
                 name: demo-webapp-env

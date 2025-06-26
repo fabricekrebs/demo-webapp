@@ -17,3 +17,4 @@ data:
   DB_PORT: "5432"
   ENABLE_AZURE_MONITOR: "True"
   ENABLE_LIVE_METRICS: "True"
+  AZURE_FOUNDRY_ENDPOINT: "https://aif-francecentral-demowebapp-ai-01.services.ai.azure.com/api/projects/demo-webapp"
