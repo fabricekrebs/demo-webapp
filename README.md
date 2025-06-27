@@ -1,5 +1,14 @@
 # demo-webapp
 
+## Project Goal and Disclaimer
+
+This is a custom application built to serve multiple purposes:
+
+- **Demonstrate Application Modernization Journey**
+- **Showcase Integrations with Azure Services** such as AKS, Container App, Application Insights, Azure AI Foundry, Azure Database for PostgreSQL Flexible Server, Azure Monitor, and more.
+
+> **Disclaimer:** This is not an official Microsoft repository. It is my own repository, created for demonstration and educational purposes.
+
 ## Local developpment Setup Instructions
 <details>
 
