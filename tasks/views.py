@@ -2,17 +2,14 @@ from django.conf import settings
 from django.shortcuts import render
 import logging
 from datetime import datetime
-from rest_framework import generics, status
+from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import mixins
 from .models import Chat, ChatMessage
 from .serializers import ChatSerializer, ChatMessageSerializer
-import requests
 import os
 from dotenv import load_dotenv
 from azure.ai.projects import AIProjectClient
-from azure.core.credentials import AzureKeyCredential
 from azure.identity import DefaultAzureCredential
 from azure.ai.agents.models import ListSortOrder
 from rest_framework.decorators import api_view
@@ -65,43 +62,45 @@ class ChatDetailView(generics.RetrieveDestroyAPIView):
 
 class ChatMessageCreateView(APIView):
     def post(self, request, chat_id):
+        logger = logging.getLogger("django.chat")
         chat = Chat.objects.get(id=chat_id)
         user_message = request.data.get('message')
+        logger.info(f"Received message for chat_id={chat_id}: {user_message}")
         if not user_message:
+            logger.warning(f"No message provided for chat_id={chat_id}")
             return Response({'error': 'Message required'}, status=400)
         user_msg_obj = ChatMessage.objects.create(chat=chat, message=user_message, is_bot=False)
-        azure_response = self.ask_azure_foundry(user_message, chat)
+        logger.debug(f"User message saved: {user_msg_obj}")
+        azure_response = self.ask_azure_foundry(user_message, chat, logger)
         bot_msg_obj = ChatMessage.objects.create(chat=chat, message=azure_response, is_bot=True)
+        logger.debug(f"Bot message saved: {bot_msg_obj}")
         return Response(ChatMessageSerializer([user_msg_obj, bot_msg_obj], many=True).data)
 
-    def ask_azure_foundry(self, message, chat):
+    def ask_azure_foundry(self, message, chat, logger=None):
         # Azure AI Foundry integration using SDK
         try:
             endpoint = os.getenv('AZURE_FOUNDRY_ENDPOINT')
             agent_id = os.getenv('AZURE_FOUNDRY_AGENT_ID')
-
             thread_id = getattr(chat, 'azure_thread_id', None)
             if not endpoint or not agent_id:
+                if logger:
+                    logger.error("Azure Foundry not configured: missing endpoint or agent_id")
                 return "[Azure Foundry not configured]"
-
-            # Initialize Azure AI Project Client with API key
             project = AIProjectClient(
                 credential=DefaultAzureCredential(),
                 endpoint=endpoint
             )
-
-            # Get agent
+            logger and logger.info(f"Initialized AIProjectClient for endpoint {endpoint}")
             agent = project.agents.get_agent(agent_id)
-
-            # If no thread exists for this chat, create one and save it
+            logger and logger.info(f"Fetched agent {agent_id}")
             if not thread_id:
                 thread = project.agents.threads.create()
                 chat.azure_thread_id = thread.id
                 chat.save()
+                logger and logger.info(f"Created new thread {thread.id} for chat {chat.id}")
             else:
                 thread = project.agents.threads.get(thread_id)
-
-            # Send user message with hybrid HTML formatting instruction
+                logger and logger.info(f"Using existing thread {thread_id} for chat {chat.id}")
             instructions = (
                 "When you answer, use normal text for normal content, "
                 "but format tables, bold, and other rich content as Markdown."
@@ -111,24 +110,26 @@ class ChatMessageCreateView(APIView):
                 role="user",
                 content=f"{instructions}\n\n{message}"
             )
-
-            # Run agent
+            logger and logger.info(f"Sent user message to thread {thread.id}")
             run = project.agents.runs.create_and_process(
                 thread_id=thread.id,
                 agent_id=agent.id
             )
-
+            logger and logger.info(f"Run status: {run.status}")
             if run.status == "failed":
+                logger and logger.error(f"Azure run failed: {getattr(run, 'last_error', 'Unknown error')}")
                 return f"[Azure run failed] {getattr(run, 'last_error', 'Unknown error')}"
             else:
-                # Get all messages in the thread, return the last bot message
                 messages = project.agents.messages.list(thread_id=thread.id, order=ListSortOrder.ASCENDING)
                 bot_reply = None
                 for msg in messages:
                     if msg.role == "assistant" and msg.text_messages:
                         bot_reply = msg.text_messages[-1].text.value
+                logger and logger.info(f"Bot reply: {bot_reply}")
                 return bot_reply or "[No response from assistant]"
         except Exception as e:
+            if logger:
+                logger.exception(f"Azure error: Exception: {str(e)}")
             return f"[Azure error: Exception] {str(e)}"
 
 @api_view(['GET'])

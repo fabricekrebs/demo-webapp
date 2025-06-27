@@ -59,7 +59,40 @@ To have the chatbot working, you must configure Azure AI Foundry as follows:
 
 If any of these steps are not completed, the chatbot will not function.
 
-By default, the environment variables will take priority, and if none are defined, the ones defined in the `.venv` file under the root folder of the application will be used.
+---
+
+### Test Your Azure AI Foundry Connection
+
+To verify your Azure AI Foundry integration is working, you can run the following Python script:
+
+```python
+import os
+from azure.ai.projects import AIProjectClient
+from azure.identity import DefaultAzureCredential
+
+# Load environment variables
+endpoint = os.getenv("AZURE_FOUNDRY_ENDPOINT")
+agent_id = os.getenv("AZURE_FOUNDRY_AGENT_ID")
+
+# Initialize client
+client = AIProjectClient(endpoint=endpoint, credential=DefaultAzureCredential())
+
+# Create thread and send message
+thread = client.agents.threads.create()
+client.agents.messages.create(thread_id=thread.id, role="user", content="Hello, create a task name test task for the project Apollo.")
+run = client.agents.runs.create_and_process(thread_id=thread.id, agent_id=agent_id)
+
+# Check run status
+if run.status == "failed":
+    print("❌ Agent run failed:", run.last_error)
+else:
+    messages = client.agents.messages.list(thread_id=thread.id)
+    for msg in messages:
+        if msg.role == "assistant":
+            print("✅ Agent response:", msg.text_messages[-1].text.value)
+```
+
+If you see a response from the agent, your connection is successful. If you see an error, check your environment variables and Azure configuration.
 
 ### 4. Install Dependencies
 
