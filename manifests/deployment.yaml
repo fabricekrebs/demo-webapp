@@ -4,7 +4,7 @@ metadata:
   name: demo-webapp
   namespace: demo-webapp
 spec:
-  replicas: 1
+  replicas: 4
   selector:
     matchLabels:
       app: demo-webapp
