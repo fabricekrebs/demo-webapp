@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Chatbot</title>
+    <title>Enhanced Chatbot</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Add marked.js for Markdown rendering -->
@@ -9,115 +9,495 @@
     <style>
         #chat-window table { width: 100%; margin: 1em 0; }
         #chat-window th, #chat-window td { border: 1px solid hsl(0, 0%, 0%); padding: 4px; }
-        #chat-window pre { background: #000000; padding: 8px; border-radius: 4px; }
+        #chat-window pre { background: #000000; color: #ffffff; padding: 8px; border-radius: 4px; }
+        .message-timestamp { font-size: 0.8em; color: #6c757d; margin-left: 10px; }
+        .bot-message { background-color: #f8f9fa; padding: 10px; border-radius: 10px; margin: 5px 0; }
+        .user-message { background-color: #e3f2fd; padding: 10px; border-radius: 10px; margin: 5px 0; text-align: right; }
+        .error-message { background-color: #ffebee; color: #c62828; padding: 10px; border-radius: 10px; margin: 5px 0; }
+        .rate-limit-warning { background-color: #fff3e0; color: #ef6c00; padding: 10px; border-radius: 10px; margin: 5px 0; }
+        .typing-indicator { font-style: italic; color: #6c757d; }
+        .status-indicator { 
+            width: 12px; 
+            height: 12px; 
+            border-radius: 50%; 
+            display: inline-block; 
+            margin-right: 5px; 
+        }
+        .status-healthy { background-color: #4caf50; }
+        .status-unhealthy { background-color: #f44336; }
+        .status-unknown { background-color: #ff9800; }
+        .chat-controls { margin-bottom: 15px; }
+        #chat-input:disabled { background-color: #f5f5f5; }
     </style>
 </head>
 <body>
     <div class="container-fluid w-75">
-        <h1 class="mt-5">Chatbot</h1>
+        <h1 class="mt-5">Enhanced Chatbot</h1>
         <button onclick="window.location.href='/'" class="btn btn-secondary mb-3">Back to Task List</button>
         <button onclick="window.location.href='/projects/'" class="btn btn-info mb-3">Manage Projects</button>
+        
         <div class="card mt-4">
             <div class="card-body">
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="chat-select">Select Conversation:</label>
-                        <select id="chat-select" class="form-control"></select>
-                    </div>
-                    <div class="col-md-6 d-flex align-items-end">
-                        <button id="new-chat" class="btn btn-success ml-2">New Conversation</button>
-                        <button id="delete-chat" class="btn btn-danger ml-2">Delete Conversation</button>
+                <!-- Chatbot Status -->
+                <div id="chatbot-status" class="alert" style="display:none;">
+                    <span id="status-indicator" class="status-indicator"></span>
+                    <span id="status-text"></span>
+                </div>
+                
+                <!-- Chat Controls -->
+                <div class="chat-controls">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="chat-select">Select Conversation:</label>
+                            <select id="chat-select" class="form-control"></select>
+                        </div>
+                        <div class="col-md-8 d-flex align-items-end">
+                            <button id="new-chat" class="btn btn-success ml-2">New Conversation</button>
+                            <button id="delete-chat" class="btn btn-danger ml-2">Delete Conversation</button>
+                            <button id="clear-chat" class="btn btn-warning ml-2">Clear History</button>
+                            <button id="refresh-status" class="btn btn-info ml-2">Check Status</button>
+                        </div>
                     </div>
                 </div>
+                
                 <!-- Loading spinner -->
                 <div id="loading-spinner" class="text-center mb-3" style="display:none;">
                     <div class="spinner-border text-primary" role="status">
                         <span class="sr-only">Loading...</span>
                     </div>
+                    <div id="loading-text" class="mt-2">Processing your message...</div>
                 </div>
-                <div id="chat-window" class="border rounded p-3 mb-3" style="height:300px; overflow-y:auto; background:#f8f9fa;"></div>
+                
+                <!-- Chat Window -->
+                <div id="chat-window" class="border rounded p-3 mb-3" style="height:400px; overflow-y:auto; background:#ffffff;"></div>
+                
+                <!-- Warnings and Errors -->
                 <div id="chatbot-warning" class="alert alert-warning" style="display:none;"></div>
+                <div id="chatbot-error" class="alert alert-danger" style="display:none;"></div>
+                
+                <!-- Message Input -->
                 <form id="chat-form" class="form-inline">
-                    <input type="text" id="chat-input" class="form-control mr-2" placeholder="Type your message..." autocomplete="off" style="width:70%;">
-                    <button type="submit" class="btn btn-primary">Send</button>
+                    <input type="text" id="chat-input" class="form-control mr-2" 
+                           placeholder="Type your message... (max 4000 characters)" 
+                           autocomplete="off" style="width:75%;" maxlength="4000">
+                    <button type="submit" id="send-button" class="btn btn-primary">Send</button>
+                    <div class="ml-2">
+                        <small id="char-counter" class="text-muted">0/4000</small>
+                    </div>
                 </form>
+                
+                <!-- Rate Limit Info -->
+                <div id="rate-limit-info" class="mt-2" style="display:none;">
+                    <small class="text-muted">Rate limit: Please wait <span id="retry-countdown"></span> seconds before sending another message.</small>
+                </div>
             </div>
         </div>
     </div>
+    
     <script>
     const apiBase = '/api/chats/';
     let currentChatId = null;
+    let isProcessing = false;
+    let retryTimeout = null;
 
-    function showSpinner() {
-        document.getElementById('loading-spinner').style.display = '';
+    // Initialize
+    $(document).ready(function() {
+        setupEventListeners();
+        fetchChats();
+        checkChatbotStatus();
+        
+        // Auto-refresh status every 5 minutes
+        setInterval(checkChatbotStatus, 5 * 60 * 1000);
+    });
+
+    function setupEventListeners() {
+        // Character counter
+        $('#chat-input').on('input', function() {
+            const length = $(this).val().length;
+            $('#char-counter').text(`${length}/4000`);
+            if (length > 3500) {
+                $('#char-counter').addClass('text-warning');
+            } else {
+                $('#char-counter').removeClass('text-warning');
+            }
+        });
+
+        // Chat selection
+        $('#chat-select').on('change', function() {
+            if (this.value) {
+                loadChat(this.value);
+            }
+        });
+
+        // Button events
+        $('#new-chat').on('click', createNewChat);
+        $('#delete-chat').on('click', deleteChat);
+        $('#clear-chat').on('click', clearConversation);
+        $('#refresh-status').on('click', checkChatbotStatus);
+        
+        // Form submission
+        $('#chat-form').on('submit', sendMessage);
+        
+        // Enter key handling
+        $('#chat-input').on('keypress', function(e) {
+            if (e.which === 13 && !e.shiftKey) {
+                e.preventDefault();
+                $('#chat-form').submit();
+            }
+        });
     }
+
+    function showSpinner(text = 'Loading...') {
+        $('#loading-text').text(text);
+        $('#loading-spinner').show();
+    }
+    
     function hideSpinner() {
-        document.getElementById('loading-spinner').style.display = 'none';
+        $('#loading-spinner').hide();
+    }
+
+    function showError(message, type = 'error') {
+        hideSpinner();
+        const alertClass = type === 'warning' ? 'alert-warning' : 'alert-danger';
+        const alertId = type === 'warning' ? '#chatbot-warning' : '#chatbot-error';
+        
+        $(alertId).removeClass('alert-warning alert-danger').addClass(alertClass);
+        $(alertId).text(message).show();
+        
+        // Auto-hide after 10 seconds
+        setTimeout(() => $(alertId).hide(), 10000);
+    }
+
+    function hideErrors() {
+        $('#chatbot-warning, #chatbot-error').hide();
+    }
+
+    function updateChatbotStatus(config) {
+        const statusDiv = $('#chatbot-status');
+        const indicator = $('#status-indicator');
+        const statusText = $('#status-text');
+        
+        if (!config.enabled) {
+            statusDiv.removeClass().addClass('alert alert-danger').show();
+            indicator.removeClass().addClass('status-indicator status-unhealthy');
+            statusText.text('Chatbot is disabled - please contact your administrator');
+            disableChatInterface();
+            return;
+        }
+        
+        switch (config.status) {
+            case 'healthy':
+                statusDiv.removeClass().addClass('alert alert-success').show();
+                indicator.removeClass().addClass('status-indicator status-healthy');
+                statusText.html(`Chatbot is online ${config.agent_name ? `(${config.agent_name})` : ''}`);
+                enableChatInterface();
+                break;
+            case 'unhealthy':
+                statusDiv.removeClass().addClass('alert alert-warning').show();
+                indicator.removeClass().addClass('status-indicator status-unhealthy');
+                statusText.text(`Chatbot is having issues: ${config.errors ? config.errors.join(', ') : 'Unknown error'}`);
+                disableChatInterface();
+                break;
+            default:
+                statusDiv.removeClass().addClass('alert alert-info').show();
+                indicator.removeClass().addClass('status-indicator status-unknown');
+                statusText.text('Chatbot status unknown');
+                enableChatInterface();
+        }
+    }
+
+    function enableChatInterface() {
+        $('#chat-form, #chat-select, #new-chat, #delete-chat, #clear-chat').prop('disabled', false);
+        $('#chat-input').prop('disabled', false).attr('placeholder', 'Type your message... (max 4000 characters)');
+    }
+
+    function disableChatInterface() {
+        $('#chat-form, #chat-select, #new-chat, #delete-chat, #clear-chat').prop('disabled', true);
+        $('#chat-input').prop('disabled', true).attr('placeholder', 'Chatbot is currently unavailable');
+    }
+
+    function checkChatbotStatus() {
+        fetch('/api/chats/config/')
+            .then(r => r.json())
+            .then(config => {
+                updateChatbotStatus(config);
+            })
+            .catch(err => {
+                console.error('Failed to check chatbot status:', err);
+                showError('Failed to check chatbot status');
+            });
     }
 
     function fetchChats() {
-        showSpinner();
+        showSpinner('Loading conversations...');
         fetch(apiBase)
             .then(r => r.json())
             .then(data => {
-                const select = document.getElementById('chat-select');
-                select.innerHTML = '';
-                data.forEach(chat => {
-                    const opt = document.createElement('option');
-                    opt.value = chat.id;
-                    opt.textContent = chat.title || `Chat ${chat.id}`;
-                    select.appendChild(opt);
-                });
-                if (data.length > 0) {
-                    select.value = data[0].id;
+                const select = $('#chat-select');
+                select.empty();
+                
+                if (data.length === 0) {
+                    select.append('<option value="">No conversations yet</option>');
+                } else {
+                    data.forEach(chat => {
+                        const opt = $('<option></option>');
+                        opt.val(chat.id);
+                        opt.text(chat.title || `Chat ${chat.id}`);
+                        select.append(opt);
+                    });
+                    
+                    // Load the first chat
+                    select.val(data[0].id);
                     loadChat(data[0].id);
                 }
             })
-            .finally(hideSpinner);
+            .catch(err => {
+                console.error('Failed to fetch chats:', err);
+                showError('Failed to load conversations');
+            })
+            .finally(() => hideSpinner());
     }
 
     function loadChat(chatId) {
         currentChatId = chatId;
-        showSpinner();
-        fetch(apiBase + chatId + '/')
+        showSpinner('Loading conversation...');
+        
+        fetch(`${apiBase}${chatId}/`)
             .then(r => r.json())
             .then(chat => {
-                const win = document.getElementById('chat-window');
-                win.innerHTML = '';
-                chat.messages.forEach(msg => {
-                    const div = document.createElement('div');
-                    if (msg.is_bot) {
-                        // Render bot message as Markdown
-                        div.innerHTML = '<strong>Bot:</strong> ' + marked.parse(msg.message);
-                        div.className = 'text-dark';
-                    } else {
-                        div.textContent = 'You: ' + msg.message;
-                        div.className = 'text-dark';
-                    }
-                    div.style.margin = '0.5em 0';
-                    win.appendChild(div);
-                });
-                win.scrollTop = win.scrollHeight;
-            })
-            .finally(hideSpinner);
-    }
-
-    function checkChatbotConfig() {
-        fetch('/api/chats/config/')
-            .then(r => r.json())
-            .then(cfg => {
-                if (!cfg.enabled) {
-                    document.getElementById('chatbot-warning').style.display = '';
-                    document.getElementById('chatbot-warning').textContent = 'Chatbot integration is not setup. Please contact your administrator.';
-                    document.getElementById('chat-form').style.display = 'none';
-                    document.getElementById('chat-select').disabled = true;
-                    document.getElementById('new-chat').disabled = true;
-                    document.getElementById('delete-chat').disabled = true;
+                const win = $('#chat-window');
+                win.empty();
+                
+                if (chat.messages && chat.messages.length > 0) {
+                    chat.messages.forEach(msg => {
+                        appendMessage(msg.message, msg.is_bot, new Date(msg.created_at));
+                    });
+                } else {
+                    win.append('<div class="text-muted text-center">No messages yet. Start a conversation!</div>');
                 }
-            });
+                
+                scrollToBottom();
+            })
+            .catch(err => {
+                console.error('Failed to load chat:', err);
+                showError('Failed to load conversation');
+            })
+            .finally(() => hideSpinner());
     }
 
-    // CSRF token helper for Django
+    function appendMessage(content, isBot, timestamp = new Date()) {
+        const win = $('#chat-window');
+        const messageDiv = $('<div></div>');
+        
+        if (isBot) {
+            messageDiv.addClass('bot-message');
+            messageDiv.html('<strong>Bot:</strong> ' + marked.parse(content));
+        } else {
+            messageDiv.addClass('user-message');
+            messageDiv.text('You: ' + content);
+        }
+        
+        // Add timestamp
+        const timeSpan = $('<span></span>').addClass('message-timestamp').text(formatTime(timestamp));
+        messageDiv.append(timeSpan);
+        
+        win.append(messageDiv);
+        scrollToBottom();
+    }
+
+    function formatTime(date) {
+        return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
+
+    function scrollToBottom() {
+        const win = $('#chat-window');
+        win.scrollTop(win[0].scrollHeight);
+    }
+
+    function createNewChat() {
+        if (isProcessing) return;
+        
+        showSpinner('Creating new conversation...');
+        
+        fetch(apiBase, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: '{}'
+        })
+        .then(r => r.json())
+        .then(chat => {
+            fetchChats();
+            setTimeout(() => loadChat(chat.id), 500);
+        })
+        .catch(err => {
+            console.error('Failed to create chat:', err);
+            showError('Failed to create new conversation');
+        })
+        .finally(() => hideSpinner());
+    }
+
+    function deleteChat() {
+        const chatId = $('#chat-select').val();
+        if (!chatId || isProcessing) return;
+        
+        if (!confirm('Are you sure you want to delete this conversation? This cannot be undone.')) return;
+        
+        showSpinner('Deleting conversation...');
+        
+        fetch(`${apiBase}${chatId}/`, {
+            method: 'DELETE',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        })
+        .then(() => {
+            currentChatId = null;
+            fetchChats();
+        })
+        .catch(err => {
+            console.error('Failed to delete chat:', err);
+            showError('Failed to delete conversation');
+        })
+        .finally(() => hideSpinner());
+    }
+
+    function clearConversation() {
+        const chatId = $('#chat-select').val();
+        if (!chatId || isProcessing) return;
+        
+        if (!confirm('Clear this conversation history? This will start a fresh conversation.')) return;
+        
+        showSpinner('Clearing conversation...');
+        
+        fetch(`${apiBase}${chatId}/clear/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(r => r.json())
+        .then(result => {
+            if (result.success) {
+                loadChat(chatId);
+                showError('Conversation cleared successfully!', 'warning');
+            } else {
+                showError(result.error || 'Failed to clear conversation');
+            }
+        })
+        .catch(err => {
+            console.error('Failed to clear conversation:', err);
+            showError('Failed to clear conversation');
+        })
+        .finally(() => hideSpinner());
+    }
+
+    function sendMessage(e) {
+        e.preventDefault();
+        
+        if (isProcessing) return;
+        
+        const input = $('#chat-input');
+        const message = input.val().trim();
+        
+        if (!message || !currentChatId) return;
+        
+        if (message.length > 4000) {
+            showError('Message is too long (maximum 4000 characters)');
+            return;
+        }
+        
+        isProcessing = true;
+        hideErrors();
+        
+        // Disable input and show processing state
+        input.prop('disabled', true);
+        $('#send-button').prop('disabled', true).text('Sending...');
+        
+        // Add user message immediately
+        appendMessage(message, false);
+        input.val('');
+        $('#char-counter').text('0/4000');
+        
+        // Show typing indicator
+        const typingDiv = $('<div class="typing-indicator">Bot is typing...</div>');
+        $('#chat-window').append(typingDiv);
+        scrollToBottom();
+        
+        showSpinner('Waiting for response...');
+        
+        fetch(`${apiBase}${currentChatId}/messages/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({message: message})
+        })
+        .then(async r => {
+            const data = await r.json();
+            
+            // Remove typing indicator
+            typingDiv.remove();
+            
+            if (!r.ok) {
+                if (r.status === 429) {
+                    // Rate limit
+                    const retryAfter = data.retry_after || 60;
+                    showRateLimit(retryAfter);
+                    throw new Error(data.error || 'Rate limit exceeded');
+                } else {
+                    throw new Error(data.error || `Server error: ${r.status}`);
+                }
+            }
+            
+            return data;
+        })
+        .then(messages => {
+            // The user message is already displayed, so show only the bot response
+            const botMessage = messages.find(msg => msg.is_bot);
+            if (botMessage) {
+                appendMessage(botMessage.message, true, new Date(botMessage.created_at));
+            }
+        })
+        .catch(err => {
+            console.error('Failed to send message:', err);
+            typingDiv.remove();
+            
+            // Add error message to chat
+            const errorDiv = $('<div class="error-message">Failed to send message: ' + err.message + '</div>');
+            $('#chat-window').append(errorDiv);
+            scrollToBottom();
+        })
+        .finally(() => {
+            isProcessing = false;
+            hideSpinner();
+            
+            // Re-enable input
+            input.prop('disabled', false).focus();
+            $('#send-button').prop('disabled', false).text('Send');
+        });
+    }
+
+    function showRateLimit(retryAfter) {
+        $('#rate-limit-info').show();
+        
+        let countdown = retryAfter;
+        const updateCountdown = () => {
+            $('#retry-countdown').text(countdown);
+            if (countdown > 0) {
+                countdown--;
+                retryTimeout = setTimeout(updateCountdown, 1000);
+            } else {
+                $('#rate-limit-info').hide();
+            }
+        };
+        
+        updateCountdown();
+    }
+
+    // CSRF token helper
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -132,73 +512,8 @@
         }
         return cookieValue;
     }
-    const csrftoken = getCookie('csrftoken');
-
-    document.getElementById('chat-select').addEventListener('change', function() {
-        loadChat(this.value);
-    });
-
-    document.getElementById('new-chat').addEventListener('click', function() {
-        showSpinner();
-        fetch(apiBase, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken
-            },
-            body: '{}'
-        })
-        .then(r => r.json())
-        .then(chat => {
-            fetchChats();
-            setTimeout(() => loadChat(chat.id), 500);
-        })
-        .finally(hideSpinner);
-    });
-
-    document.getElementById('delete-chat').addEventListener('click', function() {
-        const select = document.getElementById('chat-select');
-        const chatId = select.value;
-        if (!chatId) return;
-        if (!confirm('Are you sure you want to delete this conversation?')) return;
-        showSpinner();
-        fetch(apiBase + chatId + '/', {
-            method: 'DELETE',
-            headers: {
-                'X-CSRFToken': csrftoken
-            }
-        })
-        .then(() => {
-            fetchChats();
-        })
-        .finally(hideSpinner);
-    });
-
-    document.getElementById('chat-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const input = document.getElementById('chat-input');
-        const msg = input.value.trim();
-        if (!msg || !currentChatId) return;
-        showSpinner();
-        fetch(apiBase + currentChatId + '/messages/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken
-            },
-            body: JSON.stringify({message: msg})
-        })
-        .then(r => r.json())
-        .then(messages => {
-            loadChat(currentChatId);
-            input.value = '';
-        })
-        .finally(hideSpinner);
-    });
-
-    fetchChats();
-    checkChatbotConfig();
     </script>
+    
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
 </body>
 </html>

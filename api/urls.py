@@ -1,6 +1,13 @@
 from django.urls import path
 from .views import TaskListCreate, TaskDetail, ProjectListCreate, ProjectDetail, UserListCreate
-from tasks.views import ChatListCreateView, ChatDetailView, ChatMessageCreateView, chatbot_config
+from tasks.views import (
+    ChatListCreateView, 
+    ChatDetailView, 
+    ChatMessageCreateView, 
+    chatbot_config,
+    clear_conversation,
+    conversation_summary
+)
 
 urlpatterns = [
     path('tasks/', TaskListCreate.as_view(), name='task-list-create'),
@@ -11,5 +18,7 @@ urlpatterns = [
     path('chats/', ChatListCreateView.as_view(), name='chat-list-create'),
     path('chats/<int:pk>/', ChatDetailView.as_view(), name='chat-detail'),
     path('chats/<int:chat_id>/messages/', ChatMessageCreateView.as_view(), name='chat-message-create'),
+    path('chats/<int:chat_id>/clear/', clear_conversation, name='clear-conversation'),
+    path('chats/<int:chat_id>/summary/', conversation_summary, name='conversation-summary'),
     path('chats/config/', chatbot_config, name='chatbot-config'),
 ]
