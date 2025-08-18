@@ -51,12 +51,44 @@ LOGGING = {
 # Azure Monitor OpenTelemetry integration (optional, controlled by env var)
 ENABLE_AZURE_MONITOR = os.getenv('ENABLE_AZURE_MONITOR', 'False').lower() in ('true', '1', 't')
 if ENABLE_AZURE_MONITOR:
-    from azure.monitor.opentelemetry import configure_azure_monitor
-
-    configure_azure_monitor(
-        connection_string=os.getenv('APPLICATIONINSIGHTS_CONNECTION_STRING'),
-        enable_live_metrics=os.getenv('ENABLE_LIVE_METRICS', 'False').lower() in ('true', '1', 't'),
-    )
+    try:
+        # Try the standard configuration first
+        from azure.monitor.opentelemetry import configure_azure_monitor
+        import logging
+        
+        # Configure OpenTelemetry with error handling
+        configure_azure_monitor(
+            connection_string=os.getenv('APPLICATIONINSIGHTS_CONNECTION_STRING'),
+            enable_live_metrics=os.getenv('ENABLE_LIVE_METRICS', 'False').lower() in ('true', '1', 't'),
+            # Add resource attributes that are compatible
+            resource_attributes={
+                "service.name": "demo-webapp",
+                "service.version": "1.0.0",
+            }
+        )
+        
+        # Configure logging to avoid attribute conflicts
+        logging.basicConfig(level=logging.INFO)
+        
+    except Exception as e:
+        # Log the error and try alternative configuration
+        print(f"Warning: Failed to configure Azure Monitor with standard method: {e}")
+        try:
+            from .opentelemetry_config import configure_opentelemetry_safe, configure_opentelemetry_logging
+            
+            # Try safe configuration
+            trace_configured = configure_opentelemetry_safe()
+            log_configured = configure_opentelemetry_logging()
+            
+            if not (trace_configured or log_configured):
+                print("Warning: OpenTelemetry configuration failed completely. Disabling Azure Monitor.")
+                ENABLE_AZURE_MONITOR = False
+            else:
+                print("OpenTelemetry configured with alternative method.")
+                
+        except Exception as e2:
+            print(f"Warning: Alternative OpenTelemetry configuration also failed: {e2}")
+            ENABLE_AZURE_MONITOR = False
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

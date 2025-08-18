@@ -5,6 +5,9 @@ django-cors-headers  # Django app for handling the server headers required for C
 python-dotenv  # Reads key-value pairs from a .env file and can set them as environment variables.
 psycopg2-binary  # PostgreSQL database adapter for Python.
 gunicorn
-azure-monitor-opentelemetry  # OpenTelemetry instrumentation for Azure Monitor.
+azure-monitor-opentelemetry>=1.2.0  # OpenTelemetry instrumentation for Azure Monitor.
+opentelemetry-api>=1.21.0
+opentelemetry-sdk>=1.21.0
+opentelemetry-instrumentation-django>=0.42b0
 opencensus-ext-azure
 azure-ai-projects
