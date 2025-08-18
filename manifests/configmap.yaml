@@ -8,7 +8,7 @@ data:
   ALLOWED_HOSTS: "*"
   BACKEND_ADDRESS: "https://demo-webapp.krfa-lab.com"
   BACKEND_SAME_HOST: "False" #Needs to be set to False if it's deployed on Kubernetes and behind an Ingress
-  TIME_ZONE: "CET"
+  TIME_ZONE: "Europe/Zurich"
   CORS_ALLOW_ALL_ORIGINS: "True"
   CSRF_TRUSTED_ORIGINS: "https://*.krfa-lab.com"
   DB_USER: "postgre"
