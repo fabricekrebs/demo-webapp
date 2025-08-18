@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logged Out - Chatbot Access</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .logout-container {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 10px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .logout-header {
+            margin-bottom: 2rem;
+        }
+        
+        .logout-header h1 {
+            color: #333;
+            margin-bottom: 0.5rem;
+            font-size: 1.8rem;
+        }
+        
+        .logout-header p {
+            color: #666;
+            margin: 0;
+            font-size: 0.95rem;
+        }
+        
+        .success-icon {
+            font-size: 3rem;
+            color: #28a745;
+            margin-bottom: 1rem;
+        }
+        
+        .actions {
+            margin-top: 2rem;
+        }
+        
+        .action-button {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 500;
+            margin: 0 0.5rem 0.5rem 0;
+            transition: opacity 0.3s;
+        }
+        
+        .action-button:hover {
+            opacity: 0.9;
+            text-decoration: none;
+        }
+        
+        .secondary-button {
+            background: #6c757d;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 1rem;
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        @media (max-width: 480px) {
+            .logout-container {
+                padding: 1.5rem;
+                margin: 10px;
+            }
+            
+            .logout-header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .action-button {
+                display: block;
+                margin: 0.5rem 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="logout-container">
+        <div class="logout-header">
+            <div class="success-icon">✅</div>
+            <h1>Logged Out</h1>
+            <p>You have been successfully logged out from the chatbot system</p>
+        </div>
+        
+        <div class="actions">
+            <a href="/auth/login/" class="action-button">Login Again</a>
+            <a href="/" class="action-button secondary-button">Home Page</a>
+        </div>
+        
+        <div class="info-box">
+            Your session has been terminated and you no longer have access to the chatbot. 
+            All session data has been cleared for security purposes.
+        </div>
+    </div>
+</body>
+</html>

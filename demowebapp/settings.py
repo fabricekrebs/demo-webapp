@@ -189,3 +189,12 @@ BACKEND_SAME_HOST = os.getenv('BACKEND_SAME_HOST', 'True') #define if the backen
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True').lower() in ('true', '1', 't')
 
 CSRF_TRUSTED_ORIGINS = [os.getenv('CSRF_TRUSTED_ORIGINS', 'http://*.krfa-lab.com:8000')]
+
+# Authentication settings
+LOGIN_URL = '/auth/login/'
+LOGIN_REDIRECT_URL = '/chatbot/'
+LOGOUT_REDIRECT_URL = '/'
+
+# Session settings
+SESSION_COOKIE_AGE = 3600  # 1 hour
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True

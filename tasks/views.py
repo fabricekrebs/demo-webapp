@@ -1,11 +1,15 @@
 from django.conf import settings
 from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import views as auth_views
+from django.urls import reverse_lazy
 import logging
 from datetime import datetime
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -57,19 +61,24 @@ def logger_view(request):
     logger.info(f"Logger is working! Current time: {datetime.now().isoformat()}")
     return render(request, 'tasks/logger.html')
 
+@login_required
 def chatbot_page(request):
+    """Chatbot page - requires user authentication."""
     return render(request, 'tasks/chatbot.html')
 
 class ChatListCreateView(generics.ListCreateAPIView):
     queryset = Chat.objects.all().order_by('-created_at')
     serializer_class = ChatSerializer
+    permission_classes = [IsAuthenticated]
 
 class ChatDetailView(generics.RetrieveDestroyAPIView):
     queryset = Chat.objects.all()
     serializer_class = ChatSerializer
+    permission_classes = [IsAuthenticated]
 
 class ChatMessageCreateView(APIView):
     """Enhanced chat message creation with improved error handling and user context."""
+    permission_classes = [IsAuthenticated]
     
     def post(self, request, chat_id):
         logger = logging.getLogger("django.chat")
@@ -173,6 +182,7 @@ class ChatMessageCreateView(APIView):
         return context
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def chatbot_config(request):
     """Get chatbot configuration status with enhanced health check."""
     try:
@@ -211,6 +221,7 @@ def chatbot_config(request):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def clear_conversation(request, chat_id):
     """Clear conversation history for a chat."""
     try:
@@ -236,6 +247,7 @@ def clear_conversation(request, chat_id):
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def conversation_summary(request, chat_id):
     """Get conversation summary from Azure thread."""
     try:

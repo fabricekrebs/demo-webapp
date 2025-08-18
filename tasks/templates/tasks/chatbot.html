@@ -28,11 +28,52 @@
         .status-unknown { background-color: #ff9800; }
         .chat-controls { margin-bottom: 15px; }
         #chat-input:disabled { background-color: #f5f5f5; }
+        .user-info { 
+            background: #e3f2fd; 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin-bottom: 15px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .user-info .welcome { font-weight: 500; }
+        .logout-btn { 
+            background: #dc3545; 
+            color: white; 
+            border: none; 
+            padding: 5px 15px; 
+            border-radius: 4px; 
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .logout-btn:hover { 
+            background: #c82333; 
+            color: white; 
+        }
     </style>
 </head>
 <body>
     <div class="container-fluid w-75">
         <h1 class="mt-5">Enhanced Chatbot</h1>
+        
+        <!-- User Authentication Info -->
+        <div class="user-info">
+            <div>
+                <span class="welcome">Welcome, {{ user.username }}!</span>
+                {% if user.get_full_name %}
+                    <small>({{ user.get_full_name }})</small>
+                {% endif %}
+            </div>
+            <div>
+                <form method="post" action="/auth/logout/" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="logout-btn">Logout</button>
+                </form>
+            </div>
+        </div>
+        
         <button onclick="window.location.href='/'" class="btn btn-secondary mb-3">Back to Task List</button>
         <button onclick="window.location.href='/projects/'" class="btn btn-info mb-3">Manage Projects</button>
         

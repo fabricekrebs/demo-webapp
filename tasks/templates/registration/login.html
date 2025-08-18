@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Chatbot Access</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .login-container {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 10px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .login-header {
+            margin-bottom: 2rem;
+        }
+        
+        .login-header h1 {
+            color: #333;
+            margin-bottom: 0.5rem;
+            font-size: 1.8rem;
+        }
+        
+        .login-header p {
+            color: #666;
+            margin: 0;
+            font-size: 0.95rem;
+        }
+        
+        .lock-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+        
+        /* Style Django's default form */
+        form {
+            text-align: left;
+        }
+        
+        form p {
+            margin-bottom: 1.5rem;
+        }
+        
+        form label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        form input[type="text"],
+        form input[type="password"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+        
+        form input[type="text"]:focus,
+        form input[type="password"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .login-button {
+            width: 100%;
+            padding: 0.75rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.3s;
+            margin-top: 1rem;
+        }
+        
+        .login-button:hover {
+            opacity: 0.9;
+        }
+        
+        /* Style Django's error messages */
+        .errorlist {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 0.75rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            list-style: none;
+            padding-left: 0.75rem;
+        }
+        
+        .errorlist li {
+            margin: 0;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 1rem;
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        .info-box strong {
+            color: #333;
+        }
+        
+        .admin-link {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+            font-size: 0.85rem;
+        }
+        
+        .admin-link a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .admin-link a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 1.5rem;
+                margin: 10px;
+            }
+            
+            .login-header h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <div class="lock-icon">🔒</div>
+            <h1>Chatbot Access</h1>
+            <p>Please login to access the AI chatbot</p>
+        </div>
+        
+        <!-- Django's built-in form with automatic error handling -->
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="login-button">Login to Chatbot</button>
+            <input type="hidden" name="next" value="{{ next }}" />
+        </form>
+        
+        <div class="info-box">
+            <strong>Access Control:</strong><br>
+            This chatbot uses AI resources that require user authentication. 
+            Please use your assigned username and password to access the system.
+            <br><br>
+            <strong>Session:</strong> Your session will expire after 1 hour of inactivity.
+        </div>
+        
+        <div class="admin-link">
+            <a href="/admin/">Admin Panel</a> | <a href="/">Back to Home</a>
+        </div>
+    </div>
+    
+    <script>
+        // Focus on first form field when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const firstInput = document.querySelector('form input[type="text"], form input[type="password"]');
+            if (firstInput) {
+                firstInput.focus();
+            }
+        });
+        
+        // Handle form submission with loading state
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const button = document.querySelector('.login-button');
+            button.textContent = 'Authenticating...';
+            button.disabled = true;
+        });
+    </script>
+</body>
+</html>
