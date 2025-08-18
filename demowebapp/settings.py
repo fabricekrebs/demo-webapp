@@ -131,6 +131,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'demowebapp.middleware.DatabaseHealthCheckMiddleware',  # Database health check middleware
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -172,6 +173,12 @@ DATABASES = {
         'PASSWORD': os.getenv('DB_PASSWORD'),
         'HOST': DB_HOST,
         'PORT': os.getenv('DB_PORT', '5432'),
+        'OPTIONS': {
+            'connect_timeout': 30,  # Connection timeout in seconds
+            'options': '-c statement_timeout=30000'  # Query timeout in milliseconds (30 seconds)
+        },
+        'CONN_MAX_AGE': 0,  # Don't persist connections to avoid hanging on dead connections
+        'CONN_HEALTH_CHECKS': True,  # Enable connection health checks (Django 4.1+)
     }
 }
 
