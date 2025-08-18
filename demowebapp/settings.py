@@ -48,47 +48,53 @@ LOGGING = {
     },
 }
 
-# Azure Monitor OpenTelemetry integration (optional, controlled by env var)
+# Azure Monitor integration - using OpenCensus instead of OpenTelemetry for Python 3.9 compatibility
 ENABLE_AZURE_MONITOR = os.getenv('ENABLE_AZURE_MONITOR', 'False').lower() in ('true', '1', 't')
+
 if ENABLE_AZURE_MONITOR:
     try:
-        # Try the standard configuration first
-        from azure.monitor.opentelemetry import configure_azure_monitor
-        import logging
-        
-        # Configure OpenTelemetry with error handling
-        configure_azure_monitor(
-            connection_string=os.getenv('APPLICATIONINSIGHTS_CONNECTION_STRING'),
-            enable_live_metrics=os.getenv('ENABLE_LIVE_METRICS', 'False').lower() in ('true', '1', 't'),
-            # Add resource attributes that are compatible
-            resource_attributes={
-                "service.name": "demo-webapp",
-                "service.version": "1.0.0",
-            }
-        )
-        
-        # Configure logging to avoid attribute conflicts
-        logging.basicConfig(level=logging.INFO)
-        
-    except Exception as e:
-        # Log the error and try alternative configuration
-        print(f"Warning: Failed to configure Azure Monitor with standard method: {e}")
-        try:
-            from .opentelemetry_config import configure_opentelemetry_safe, configure_opentelemetry_logging
+        # Use OpenCensus instead of OpenTelemetry for better Python 3.9 compatibility
+        connection_string = os.getenv('APPLICATIONINSIGHTS_CONNECTION_STRING')
+        if connection_string:
+            from opencensus.ext.azure.log_exporter import AzureLogHandler
+            import logging
             
-            # Try safe configuration
-            trace_configured = configure_opentelemetry_safe()
-            log_configured = configure_opentelemetry_logging()
+            # Add Azure handler to the root logger
+            azure_handler = AzureLogHandler(connection_string=connection_string)
+            azure_handler.setLevel(logging.INFO)
             
-            if not (trace_configured or log_configured):
-                print("Warning: OpenTelemetry configuration failed completely. Disabling Azure Monitor.")
-                ENABLE_AZURE_MONITOR = False
-            else:
-                print("OpenTelemetry configured with alternative method.")
-                
-        except Exception as e2:
-            print(f"Warning: Alternative OpenTelemetry configuration also failed: {e2}")
+            # Get the root logger and add our handler
+            root_logger = logging.getLogger()
+            root_logger.addHandler(azure_handler)
+            
+            print("Azure Monitor configured successfully using OpenCensus")
+        else:
+            print("Warning: APPLICATIONINSIGHTS_CONNECTION_STRING not set, skipping Azure Monitor")
             ENABLE_AZURE_MONITOR = False
+            
+    except ImportError:
+        print("Warning: OpenCensus Azure libraries not available, trying OpenTelemetry fallback")
+        # Fallback to OpenTelemetry only if OpenCensus is not available
+        try:
+            from azure.monitor.opentelemetry import configure_azure_monitor
+            
+            configure_azure_monitor(
+                connection_string=os.getenv('APPLICATIONINSIGHTS_CONNECTION_STRING'),
+                enable_live_metrics=os.getenv('ENABLE_LIVE_METRICS', 'False').lower() in ('true', '1', 't'),
+                resource_attributes={
+                    "service.name": "demo-webapp",
+                    "service.version": "1.0.0",
+                }
+            )
+            print("Azure Monitor configured successfully using OpenTelemetry fallback")
+            
+        except Exception as e:
+            print(f"Warning: Both OpenCensus and OpenTelemetry configuration failed: {e}")
+            ENABLE_AZURE_MONITOR = False
+            
+    except Exception as e:
+        print(f"Warning: Failed to configure Azure Monitor with OpenCensus: {e}")
+        ENABLE_AZURE_MONITOR = False
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
