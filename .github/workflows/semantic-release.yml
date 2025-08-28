@@ -93,16 +93,20 @@ jobs:
             return 'timeout';
       
       - name: Check test result
-        if: steps.check.outputs.result != 'success'
         run: |
-          if [[ "${{ steps.check.outputs.result }}" == "failure" ]]; then
+          RESULT="${{ steps.check.outputs.result }}"
+          echo "CI test result: ${RESULT}"
+          
+          if [[ "${RESULT}" == "success" ]]; then
+            echo "✅ CI tests passed - continuing with build"
+          elif [[ "${RESULT}" == "failure" ]]; then
             echo "❌ CI tests failed"
             exit 1
-          elif [[ "${{ steps.check.outputs.result }}" == "timeout" ]]; then
+          elif [[ "${RESULT}" == "timeout" ]]; then
             echo "⏰ Timeout waiting for CI tests - proceeding anyway"
             echo "Warning: Could not verify CI test status"
           else
-            echo "❌ Unknown CI test status: ${{ steps.check.outputs.result }}"
+            echo "❌ Unknown CI test status: ${RESULT}"
             exit 1
           fi
 
