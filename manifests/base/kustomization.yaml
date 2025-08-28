@@ -16,8 +16,4 @@ resources:
 
 images:
   - name: acritalynorth01.azurecr.io/demo-webapp
-<<<<<<< HEAD
     newTag: develop-a4c84c1d91aa2db0e6279adf8c793ea19194b1d3
-=======
-    newTag: develop-a4c84c1d91aa2db0e6279adf8c793ea19194b1d3
->>>>>>> af07196 (Fix : test issue)
