@@ -12,7 +12,7 @@ if "CI" in os.environ or "GITHUB_ACTIONS" in os.environ:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": "postgres",
+            "NAME": "test_demo_webapp",
             "USER": "testuser",
             "PASSWORD": "testpassword",
             "HOST": "localhost",

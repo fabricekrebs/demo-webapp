@@ -1,70 +1,111 @@
-name: Trigger auto deployment for demo-webapp
+name: Deploy to Azure Container Apps
 
 # When this action will be executed
 on:
-  # Automatically trigger it when detected changes in repo
-  push:
-    branches: 
-      [ main ]
-    paths:
-    - '**'
-    - '.github/workflows/demo-webapp-AutoDeployTrigger-81b792bc-16bc-4960-b212-95c9f014050f.yml'
+  # Trigger after successful semantic release (production only)
+  workflow_run:
+    workflows: ["Build and Release"]
+    types:
+      - completed
+    branches: [main]  # Only deploy production releases
 
   # Allow manual trigger 
   workflow_dispatch:
-  
-  # Trigger after successful CI tests
-  workflow_run:
-    workflows: ["CI - Run Tests"]
-    types:
-      - completed
-    branches: [main]  # Only deploy from main branch
+    inputs:
+      version:
+        description: 'Container image version/tag to deploy'
+        required: false
+        default: 'latest'
+        type: string
 
 jobs:
-  # Only deploy if CI tests passed
-  check-ci-success:
+  # Check if semantic release workflow was successful and created a release
+  check-release-success:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+    if: github.event_name == 'workflow_run'
     outputs:
-      ci-passed: ${{ steps.check.outputs.result }}
+      should-deploy: ${{ steps.check.outputs.result }}
+      version: ${{ steps.get-version.outputs.version }}
     steps:
-      - id: check
-        run: echo "result=true" >> $GITHUB_OUTPUT
+      - name: Check workflow result
+        id: check
+        run: |
+          if [[ "${{ github.event.workflow_run.conclusion }}" == "success" ]]; then
+            echo "result=true" >> $GITHUB_OUTPUT
+            echo "Semantic release workflow completed successfully"
+          else
+            echo "result=false" >> $GITHUB_OUTPUT
+            echo "Semantic release workflow failed or was cancelled"
+          fi
 
-  build-and-deploy:
+      - name: Get latest release version
+        id: get-version
+        if: steps.check.outputs.result == 'true'
+        uses: actions/checkout@v4
+        
+      - name: Fetch latest tag
+        if: steps.check.outputs.result == 'true'
+        run: |
+          git fetch --tags
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "latest")
+          echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
+          echo "Found version: ${LATEST_TAG}"
+
+  deploy-to-container-apps:
     runs-on: ubuntu-latest
-    needs: check-ci-success
-    if: always() && (needs.check-ci-success.outputs.ci-passed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push')
+    needs: [check-release-success]
+    if: always() && (needs.check-release-success.outputs.should-deploy == 'true' || github.event_name == 'workflow_dispatch')
+    environment: 
+      name: production-container-apps
+      url: https://demo-webapp.your-container-apps-domain.com # Update with your Container Apps URL
     permissions: 
-      id-token: write #This is required for requesting the OIDC JWT Token
-      contents: read #Required when GH token is used to authenticate with private repo
-
+      id-token: write # Required for OIDC JWT Token
+      contents: read
     steps:
       - name: Checkout to the branch
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      - name: Set deployment version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${{ needs.check-release-success.outputs.version }}"
+          fi
+          
+          # Fallback to latest if no version found
+          if [[ -z "$VERSION" || "$VERSION" == "null" ]]; then
+            VERSION="latest"
+          fi
+          
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Deploying version: ${VERSION}"
 
       - name: Azure Login
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.DEMOWEBAPP_AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.DEMOWEBAPP_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.DEMOWEBAPP_AZURE_SUBSCRIPTION_ID }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Log in to Azure Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: acritalynorth01.azurecr.io
-          username: ${{ secrets.DEMOWEBAPP_REGISTRY_USERNAME }}
-          password: ${{ secrets.DEMOWEBAPP_REGISTRY_PASSWORD }}
-
-      - name: Build and push Docker images (sha and latest)
+      - name: Verify container image exists
         run: |
-          docker build -t acritalynorth01.azurecr.io/demo-webapp:${{ github.sha }} -t acritalynorth01.azurecr.io/demo-webapp:latest .
-          docker push acritalynorth01.azurecr.io/demo-webapp:${{ github.sha }}
-          docker push acritalynorth01.azurecr.io/demo-webapp:latest
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "Checking if image exists: acritalynorth01.azurecr.io/demo-webapp:${VERSION}"
+          
+          # Login to ACR
+          az acr login --name acritalynorth01
+          
+          # Check if the image exists
+          if az acr repository show-tags --name acritalynorth01 --repository demo-webapp --query "[?@ == '${VERSION}']" -o tsv | grep -q "${VERSION}"; then
+            echo "✅ Container image found: acritalynorth01.azurecr.io/demo-webapp:${VERSION}"
+          else
+            echo "❌ Container image not found: acritalynorth01.azurecr.io/demo-webapp:${VERSION}"
+            echo "Available tags:"
+            az acr repository show-tags --name acritalynorth01 --repository demo-webapp --output table
+            exit 1
+          fi
 
       - name: Deploy to Azure Container Apps
         uses: azure/container-apps-deploy-action@v2
@@ -75,8 +116,20 @@ jobs:
           registryPassword: ${{ secrets.DEMOWEBAPP_REGISTRY_PASSWORD }}
           containerAppName: demo-webapp
           resourceGroup: rg-italynorth-contapp-01
-          imageToBuild: acritalynorth01.azurecr.io/demo-webapp:${{ github.sha }}
-          _buildArgumentsKey_: |
-            _buildArgumentsValues_
+          imageToBuild: acritalynorth01.azurecr.io/demo-webapp:${{ steps.version.outputs.version }}
+
+      - name: Deployment Summary
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "## 🚀 Container Apps Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Detail | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Environment** | Production (Container Apps) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Container Image** | acritalynorth01.azurecr.io/demo-webapp:${VERSION} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Resource Group** | rg-italynorth-contapp-01 |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Container App** | demo-webapp |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Deployment completed successfully!**" >> $GITHUB_STEP_SUMMARY
 
 
