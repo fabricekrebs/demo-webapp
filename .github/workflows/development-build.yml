@@ -1,0 +1,156 @@
+name: Development Build
+
+on:
+  push:
+    branches: 
+      - develop
+  pull_request:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  REGISTRY: acritalynorth01.azurecr.io
+  IMAGE_NAME: demo-webapp
+
+jobs:
+  # Wait for CI tests to complete
+  wait-for-tests:
+    name: Wait for CI Tests
+    runs-on: ubuntu-latest
+    outputs:
+      tests-passed: ${{ steps.check.outputs.result }}
+    steps:
+      - name: Check CI status
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = context.sha;
+            
+            // Wait up to 5 minutes for CI tests
+            let attempts = 0;
+            const maxAttempts = 30;
+            
+            while (attempts < maxAttempts) {
+              try {
+                const { data: checks } = await github.rest.checks.listForRef({
+                  owner,
+                  repo,
+                  ref: sha,
+                  status: 'completed'
+                });
+                
+                const ciChecks = checks.check_runs.filter(check => 
+                  check.name.includes('Run Unit Tests') || 
+                  check.name === 'test'
+                );
+                
+                if (ciChecks.length > 0) {
+                  const allPassed = ciChecks.every(check => check.conclusion === 'success');
+                  const anyFailed = ciChecks.some(check => check.conclusion === 'failure');
+                  
+                  if (allPassed) {
+                    console.log('✅ All CI tests passed');
+                    return 'success';
+                  } else if (anyFailed) {
+                    console.log('❌ Some CI tests failed');
+                    return 'failure';
+                  }
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 10000));
+                attempts++;
+              } catch (error) {
+                console.log(`Error: ${error.message}`);
+                attempts++;
+                await new Promise(resolve => setTimeout(resolve, 10000));
+              }
+            }
+            
+            console.log('⏰ Timeout - proceeding anyway');
+            return 'timeout';
+
+      - name: Check result
+        run: |
+          if [[ "${{ steps.check.outputs.result }}" == "failure" ]]; then
+            echo "❌ CI tests failed - stopping build"
+            exit 1
+          fi
+
+  # Build development image
+  build-dev-image:
+    name: Build Development Image
+    needs: [wait-for-tests]
+    if: needs.wait-for-tests.outputs.tests-passed != 'failure'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      image: ${{ steps.version.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: |
+          # Use short SHA for development builds
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            VERSION="pr-${{ github.event.number }}-${SHORT_SHA}"
+          else
+            VERSION="develop-${SHORT_SHA}"
+          fi
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}"
+          
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "image=${IMAGE}" >> $GITHUB_OUTPUT
+          echo "Building version: ${VERSION}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.DEMOWEBAPP_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.DEMOWEBAPP_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.DEMOWEBAPP_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to Azure Container Registry
+        run: |
+          az acr login --name acritalynorth01
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.version.outputs.image }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop-latest
+          labels: |
+            org.opencontainers.image.title=${{ env.IMAGE_NAME }}
+            org.opencontainers.image.description=Demo Web Application (Development)
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build Summary
+        run: |
+          echo "## 🔧 Development Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📦 **Container Image**: ${{ steps.version.outputs.image }}" >> $GITHUB_STEP_SUMMARY
+          echo "🏷️  **Also tagged as**: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop-latest" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 **Next Steps**:" >> $GITHUB_STEP_SUMMARY
+          echo "- Flux will automatically pull the \`develop-latest\` tag for development deployments" >> $GITHUB_STEP_SUMMARY
+          echo "- For production releases, create a PR from \`develop\` to \`main\`" >> $GITHUB_STEP_SUMMARY

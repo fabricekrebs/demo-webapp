@@ -1,0 +1,230 @@
+name: Production Release
+
+on:
+  push:
+    branches: 
+      - main
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+env:
+  REGISTRY: acritalynorth01.azurecr.io
+  IMAGE_NAME: demo-webapp
+
+jobs:
+  # Wait for CI tests to complete
+  wait-for-tests:
+    name: Wait for CI Tests
+    runs-on: ubuntu-latest
+    outputs:
+      tests-passed: ${{ steps.check.outputs.result }}
+    steps:
+      - name: Check CI status
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = context.sha;
+            
+            // Wait up to 5 minutes for CI tests
+            let attempts = 0;
+            const maxAttempts = 30;
+            
+            while (attempts < maxAttempts) {
+              try {
+                const { data: checks } = await github.rest.checks.listForRef({
+                  owner,
+                  repo,
+                  ref: sha,
+                  status: 'completed'
+                });
+                
+                const ciChecks = checks.check_runs.filter(check => 
+                  check.name.includes('Run Unit Tests') || 
+                  check.name === 'test'
+                );
+                
+                if (ciChecks.length > 0) {
+                  const allPassed = ciChecks.every(check => check.conclusion === 'success');
+                  const anyFailed = ciChecks.some(check => check.conclusion === 'failure');
+                  
+                  if (allPassed) {
+                    console.log('✅ All CI tests passed');
+                    return 'success';
+                  } else if (anyFailed) {
+                    console.log('❌ Some CI tests failed');
+                    return 'failure';
+                  }
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 10000));
+                attempts++;
+              } catch (error) {
+                console.log(`Error: ${error.message}`);
+                attempts++;
+                await new Promise(resolve => setTimeout(resolve, 10000));
+              }
+            }
+            
+            console.log('⏰ Timeout waiting for tests');
+            return 'timeout';
+
+      - name: Check result
+        run: |
+          if [[ "${{ steps.check.outputs.result }}" == "failure" ]]; then
+            echo "❌ CI tests failed - stopping release"
+            exit 1
+          fi
+
+  # Create semantic release
+  semantic-release:
+    name: Create Semantic Release
+    needs: [wait-for-tests]
+    if: needs.wait-for-tests.outputs.tests-passed != 'failure'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      released: ${{ steps.release.outputs.released }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install semantic-release
+        run: |
+          npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github
+
+      - name: Configure semantic release
+        run: |
+          cat > .releaserc.json << 'EOF'
+          {
+            "branches": ["main"],
+            "plugins": [
+              ["@semantic-release/commit-analyzer", {
+                "releaseRules": [
+                  {"type": "feat", "release": "minor"},
+                  {"type": "fix", "release": "patch"},
+                  {"type": "perf", "release": "patch"},
+                  {"breaking": true, "release": "major"}
+                ]
+              }],
+              "@semantic-release/release-notes-generator",
+              ["@semantic-release/changelog", {
+                "changelogFile": "CHANGELOG.md"
+              }],
+              ["@semantic-release/git", {
+                "assets": ["CHANGELOG.md"],
+                "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+              }],
+              "@semantic-release/github"
+            ]
+          }
+          EOF
+
+      - name: Run semantic release
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Run semantic release
+          npx semantic-release --debug > semantic-release.log 2>&1 || true
+          
+          # Check if a release was created
+          if git describe --tags --exact-match HEAD >/dev/null 2>&1; then
+            VERSION=$(git describe --tags --exact-match HEAD)
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
+            echo "released=true" >> $GITHUB_OUTPUT
+            echo "✅ Created release: ${VERSION}"
+          else
+            echo "released=false" >> $GITHUB_OUTPUT
+            echo "No release created - no relevant changes"
+            cat semantic-release.log
+          fi
+
+  # Build production image (only if release was created)
+  build-prod-image:
+    name: Build Production Image
+    needs: [semantic-release]
+    if: needs.semantic-release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+      version: ${{ needs.semantic-release.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.DEMOWEBAPP_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.DEMOWEBAPP_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.DEMOWEBAPP_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to Azure Container Registry
+        run: |
+          az acr login --name acritalynorth01
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.semantic-release.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          labels: |
+            org.opencontainers.image.title=${{ env.IMAGE_NAME }}
+            org.opencontainers.image.description=Demo Web Application
+            org.opencontainers.image.version=${{ needs.semantic-release.outputs.version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Set output
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.semantic-release.outputs.version }}"
+          echo "image=${IMAGE}" >> $GITHUB_OUTPUT
+
+  # Summary
+  release-summary:
+    name: Release Summary
+    needs: [semantic-release, build-prod-image]
+    if: always() && needs.semantic-release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Production Release Summary
+        run: |
+          echo "## 🎉 Production Release Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🏷️ **Version**: ${{ needs.semantic-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "📦 **Container Image**: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.semantic-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **Also tagged as**: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 **Next Steps**:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Update your GitOps repository with the new version" >> $GITHUB_STEP_SUMMARY
+          echo "2. The semantic version is now available for production deployment" >> $GITHUB_STEP_SUMMARY
+          echo "3. Check the [Releases page](https://github.com/${{ github.repository }}/releases) for changelog" >> $GITHUB_STEP_SUMMARY
