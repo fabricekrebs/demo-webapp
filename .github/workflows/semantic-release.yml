@@ -156,20 +156,22 @@ jobs:
             echo "environment=development" >> $GITHUB_OUTPUT
           fi
 
-  build-and-push:
-    name: Build and Push Container
+  # First, run semantic release to determine/create versions
+  semantic-release:
+    name: Semantic Release
     needs: [determine-environment]
     if: needs.determine-environment.outputs.should-build == 'true'
     runs-on: ubuntu-latest
     outputs:
-      image-digest: ${{ steps.build.outputs.digest }}
-      version: ${{ steps.version.outputs.version }}
-      is-release: ${{ steps.version.outputs.is-release }}
+      version: ${{ steps.release.outputs.version }}
+      is-release: ${{ steps.release.outputs.is-release }}
+      should-build-container: ${{ steps.release.outputs.should-build-container }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Required for semantic-release
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -180,36 +182,78 @@ jobs:
         run: |
           npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github
 
-      - name: Determine version
-        id: version
+      - name: Determine version and create release
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
           if [[ "${{ github.ref_name }}" == "main" ]]; then
-            # On main branch, create actual release
+            # On main branch, check if release is needed first
             npx semantic-release --dry-run --no-ci > release-output.txt 2>&1 || true
             
             if grep -q "The next release version is" release-output.txt; then
-              VERSION=$(grep "The next release version is" release-output.txt | sed 's/.*The next release version is //')
-              echo "version=v${VERSION}" >> $GITHUB_OUTPUT
+              # Release is needed, create it
+              echo "Release needed, creating release..."
+              
+              # Create .releaserc.json for actual release
+              cat > .releaserc.json << EOF
+          {
+            "branches": ["main"],
+            "plugins": [
+              "@semantic-release/commit-analyzer",
+              "@semantic-release/release-notes-generator",
+              "@semantic-release/changelog",
+              ["@semantic-release/git", {
+                "assets": ["CHANGELOG.md"],
+                "message": "chore(release): \${nextRelease.version} [skip ci]\n\n\${nextRelease.notes}"
+              }],
+              "@semantic-release/github"
+            ]
+          }
+          EOF
+              
+              # Run semantic release
+              npx semantic-release
+              
+              # Get the version that was just released
+              VERSION=$(git describe --tags --abbrev=0)
+              echo "version=${VERSION}" >> $GITHUB_OUTPUT
               echo "is-release=true" >> $GITHUB_OUTPUT
-              echo "Release version: v${VERSION}"
+              echo "should-build-container=true" >> $GITHUB_OUTPUT
+              echo "Created release: ${VERSION}"
             else
-              # No release needed, use commit SHA
+              # No release needed, use commit SHA for development build
               VERSION="${{ github.sha }}"
               echo "version=${VERSION}" >> $GITHUB_OUTPUT
               echo "is-release=false" >> $GITHUB_OUTPUT
-              echo "Development version: ${VERSION}"
+              echo "should-build-container=true" >> $GITHUB_OUTPUT
+              echo "Development build: ${VERSION}"
             fi
           else
             # On develop branch, use branch name + commit
             VERSION="develop-${{ github.sha }}"
             echo "version=${VERSION}" >> $GITHUB_OUTPUT
             echo "is-release=false" >> $GITHUB_OUTPUT
+            echo "should-build-container=true" >> $GITHUB_OUTPUT
             echo "Development version: ${VERSION}"
           fi
+
+  build-and-push:
+    name: Build and Push Container
+    needs: [semantic-release]
+    if: needs.semantic-release.outputs.should-build-container == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      version: ${{ needs.semantic-release.outputs.version }}
+      is-release: ${{ needs.semantic-release.outputs.is-release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -233,78 +277,21 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.semantic-release.outputs.version }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}-latest
           labels: |
             org.opencontainers.image.title=${{ env.IMAGE_NAME }}
             org.opencontainers.image.description=Demo Web Application
-            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.version=${{ needs.semantic-release.outputs.version }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  release:
-    name: Create Release
-    needs: [build-and-push]
-    if: github.ref == 'refs/heads/main' && needs.build-and-push.outputs.is-release == 'true'
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.release.outputs.version }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install semantic-release
-        run: |
-          npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github
-
-      - name: Create .releaserc.json
-        run: |
-          cat > .releaserc.json << EOF
-          {
-            "branches": ["main"],
-            "plugins": [
-              "@semantic-release/commit-analyzer",
-              "@semantic-release/release-notes-generator",
-              "@semantic-release/changelog",
-              ["@semantic-release/git", {
-                "assets": ["CHANGELOG.md"],
-                "message": "chore(release): \${nextRelease.version} [skip ci]\n\n\${nextRelease.notes}"
-              }],
-              "@semantic-release/github"
-            ]
-          }
-          EOF
-
-      - name: Release
-        id: release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Configure git
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Run semantic release
-          npx semantic-release
-          
-          # Get the version that was just released
-          VERSION=$(git describe --tags --abbrev=0)
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-
   update-manifests:
     name: Update Kubernetes Manifests
-    needs: [build-and-push, release]
+    needs: [build-and-push, semantic-release]
     if: always() && needs.build-and-push.result == 'success'
     runs-on: ubuntu-latest
     steps:
@@ -321,7 +308,7 @@ jobs:
 
       - name: Update manifests
         run: |
-          VERSION="${{ needs.release.outputs.version || needs.build-and-push.outputs.version }}"
+          VERSION="${{ needs.semantic-release.outputs.version || needs.build-and-push.outputs.version }}"
           ENVIRONMENT="${{ github.ref_name }}"
           
           echo "Updating manifests for version: $VERSION on branch: $ENVIRONMENT"
@@ -335,7 +322,7 @@ jobs:
           else
             git add manifests/
             
-            if [[ "${{ github.ref_name }}" == "main" ]] && [[ "${{ needs.build-and-push.outputs.is-release }}" == "true" ]]; then
+            if [[ "${{ github.ref_name }}" == "main" ]] && [[ "${{ needs.semantic-release.outputs.is-release }}" == "true" ]]; then
               git commit -m "chore: update manifests to version $VERSION [skip ci]"
             else
               git commit -m "chore: update manifests for $ENVIRONMENT build $VERSION [skip ci]"
@@ -346,7 +333,7 @@ jobs:
 
   deployment-status:
     name: Deployment Status
-    needs: [determine-environment, build-and-push, release, update-manifests]
+    needs: [determine-environment, semantic-release, build-and-push, update-manifests]
     if: always() && needs.determine-environment.outputs.should-build == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -356,17 +343,17 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Stage | Status | Details |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Semantic Release | ${{ needs.semantic-release.result }} | Version determination and release |" >> $GITHUB_STEP_SUMMARY
           echo "| Build & Push | ${{ needs.build-and-push.result }} | Container image build |" >> $GITHUB_STEP_SUMMARY
-          echo "| Release | ${{ needs.release.result || 'skipped' }} | Semantic versioning |" >> $GITHUB_STEP_SUMMARY
           echo "| Manifest Update | ${{ needs.update-manifests.result }} | Kubernetes manifests |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          if [[ "${{ needs.build-and-push.outputs.is-release }}" == "true" ]]; then
-            echo "🎉 **Production Release**: ${{ needs.release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-            echo "📦 **Container**: acritalynorth01.azurecr.io/demo-webapp:${{ needs.release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ needs.semantic-release.outputs.is-release }}" == "true" ]]; then
+            echo "🎉 **Production Release**: ${{ needs.semantic-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "📦 **Container**: acritalynorth01.azurecr.io/demo-webapp:${{ needs.semantic-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           else
-            echo "🔧 **Development Build**: ${{ needs.build-and-push.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-            echo "📦 **Container**: acritalynorth01.azurecr.io/demo-webapp:${{ needs.build-and-push.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "🔧 **Development Build**: ${{ needs.semantic-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "📦 **Container**: acritalynorth01.azurecr.io/demo-webapp:${{ needs.semantic-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
