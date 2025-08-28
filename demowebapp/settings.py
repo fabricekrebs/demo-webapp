@@ -10,10 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
-from pathlib import Path
-from dotenv import load_dotenv
 import os
-import sys
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
@@ -49,49 +49,50 @@ LOGGING = {
 }
 
 # Azure Monitor integration - using OpenCensus instead of OpenTelemetry for Python 3.9 compatibility
-ENABLE_AZURE_MONITOR = os.getenv('ENABLE_AZURE_MONITOR', 'False').lower() in ('true', '1', 't')
+ENABLE_AZURE_MONITOR = os.getenv("ENABLE_AZURE_MONITOR", "False").lower() in ("true", "1", "t")
 
 if ENABLE_AZURE_MONITOR:
     try:
         # Use OpenCensus instead of OpenTelemetry for better Python 3.9 compatibility
-        connection_string = os.getenv('APPLICATIONINSIGHTS_CONNECTION_STRING')
+        connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
         if connection_string:
-            from opencensus.ext.azure.log_exporter import AzureLogHandler
             import logging
-            
+
+            from opencensus.ext.azure.log_exporter import AzureLogHandler
+
             # Add Azure handler to the root logger
             azure_handler = AzureLogHandler(connection_string=connection_string)
             azure_handler.setLevel(logging.INFO)
-            
+
             # Get the root logger and add our handler
             root_logger = logging.getLogger()
             root_logger.addHandler(azure_handler)
-            
+
             print("Azure Monitor configured successfully using OpenCensus")
         else:
             print("Warning: APPLICATIONINSIGHTS_CONNECTION_STRING not set, skipping Azure Monitor")
             ENABLE_AZURE_MONITOR = False
-            
+
     except ImportError:
         print("Warning: OpenCensus Azure libraries not available, trying OpenTelemetry fallback")
         # Fallback to OpenTelemetry only if OpenCensus is not available
         try:
             from azure.monitor.opentelemetry import configure_azure_monitor
-            
+
             configure_azure_monitor(
-                connection_string=os.getenv('APPLICATIONINSIGHTS_CONNECTION_STRING'),
-                enable_live_metrics=os.getenv('ENABLE_LIVE_METRICS', 'False').lower() in ('true', '1', 't'),
+                connection_string=os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"),
+                enable_live_metrics=os.getenv("ENABLE_LIVE_METRICS", "False").lower() in ("true", "1", "t"),
                 resource_attributes={
                     "service.name": "demo-webapp",
                     "service.version": "1.0.0",
-                }
+                },
             )
             print("Azure Monitor configured successfully using OpenTelemetry fallback")
-            
+
         except Exception as e:
             print(f"Warning: Both OpenCensus and OpenTelemetry configuration failed: {e}")
             ENABLE_AZURE_MONITOR = False
-            
+
     except Exception as e:
         print(f"Warning: Failed to configure Azure Monitor with OpenCensus: {e}")
         ENABLE_AZURE_MONITOR = False
@@ -104,81 +105,81 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'yourpassword')
+SECRET_KEY = os.getenv("SECRET_KEY", "yourpassword")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 't')
+DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "t")
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'corsheaders',
-    'api',
-    'tasks',
-    'rest_framework',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "corsheaders",
+    "api.apps.ApiConfig",
+    "tasks.apps.TasksConfig",
+    "rest_framework",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'demowebapp.middleware.DatabaseHealthCheckMiddleware',  # Database health check middleware
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "demowebapp.middleware.DatabaseHealthCheckMiddleware",  # Database health check middleware
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'demowebapp.urls'
+ROOT_URLCONF = "demowebapp.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-                'demowebapp.context_processors.backend_address',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+                "demowebapp.context_processors.backend_address",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'demowebapp.wsgi.application'
+WSGI_APPLICATION = "demowebapp.wsgi.application"
 
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DB_HOST = os.getenv('DB_HOST', 'localhost')
+DB_HOST = os.getenv("DB_HOST", "localhost")
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'postgres'),
-        'USER': os.getenv('DB_USER', 'dbuser'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': DB_HOST,
-        'PORT': os.getenv('DB_PORT', '5432'),
-        'OPTIONS': {
-            'connect_timeout': 30,  # Connection timeout in seconds
-            'options': '-c statement_timeout=30000'  # Query timeout in milliseconds (30 seconds)
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "postgres"),
+        "USER": os.getenv("DB_USER", "dbuser"),
+        "PASSWORD": os.getenv("DB_PASSWORD"),
+        "HOST": DB_HOST,
+        "PORT": os.getenv("DB_PORT", "5432"),
+        "OPTIONS": {
+            "connect_timeout": 30,  # Connection timeout in seconds
+            "options": "-c statement_timeout=30000",  # Query timeout in milliseconds (30 seconds)
         },
-        'CONN_MAX_AGE': 0,  # Don't persist connections to avoid hanging on dead connections
-        'CONN_HEALTH_CHECKS': True,  # Enable connection health checks (Django 4.1+)
+        "CONN_MAX_AGE": 0,  # Don't persist connections to avoid hanging on dead connections
+        "CONN_HEALTH_CHECKS": True,  # Enable connection health checks (Django 4.1+)
     }
 }
 
@@ -187,16 +188,16 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -204,9 +205,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = os.getenv('TIME_ZONE', 'CET')
+TIME_ZONE = os.getenv("TIME_ZONE", "Europe/Zurich")
 
 USE_I18N = True
 
@@ -216,29 +217,28 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
 
-import os
-STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
+STATIC_ROOT = os.path.join(BASE_DIR, "static/")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CORS_ALLOW_HEADERS = "*"
 
-BACKEND_ADDRESS = os.getenv('BACKEND_ADDRESS', 'http://localhost:8000')
-BACKEND_SAME_HOST = os.getenv('BACKEND_SAME_HOST', 'True') #define if the backend is on the same host as the frontend
+BACKEND_ADDRESS = os.getenv("BACKEND_ADDRESS", "http://localhost:8000")
+BACKEND_SAME_HOST = os.getenv("BACKEND_SAME_HOST", "True")  # define if the backend is on the same host as the frontend
 
-CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True').lower() in ('true', '1', 't')
+CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "True").lower() in ("true", "1", "t")
 
-CSRF_TRUSTED_ORIGINS = [os.getenv('CSRF_TRUSTED_ORIGINS', 'http://*.krfa-lab.com:8000')]
+CSRF_TRUSTED_ORIGINS = [os.getenv("CSRF_TRUSTED_ORIGINS", "http://*.krfa-lab.com:8000")]
 
 # Authentication settings
-LOGIN_URL = '/auth/login/'
-LOGIN_REDIRECT_URL = '/chatbot/'
-LOGOUT_REDIRECT_URL = '/'
+LOGIN_URL = "/auth/login/"
+LOGIN_REDIRECT_URL = "/chatbot/"
+LOGOUT_REDIRECT_URL = "/"
 
 # Session settings
 SESSION_COOKIE_AGE = 3600  # 1 hour
