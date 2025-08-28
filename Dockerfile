@@ -26,5 +26,5 @@ EXPOSE 8000
 # Define environment variable
 ENV NAME demo-webapp
 
-# Set the entry point to the startup script
-ENTRYPOINT ["/app/start.sh"]
+# Set the default command to the startup script
+CMD ["/app/start.sh"]
