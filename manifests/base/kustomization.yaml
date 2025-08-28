@@ -16,4 +16,4 @@ resources:
 
 images:
   - name: acritalynorth01.azurecr.io/demo-webapp
-    newTag: develop-ed34d70a7a3051511ac490fb4a31a789f71edba4
+    newTag: develop-b287f5f813bcc50da28db9c181928cba9bc7bfea
