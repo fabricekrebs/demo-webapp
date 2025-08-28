@@ -1,0 +1,261 @@
+name: Semantic Release
+
+on:
+  push:
+    branches: 
+      - main
+      - develop
+  pull_request:
+    branches: 
+      - main
+      - develop
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+env:
+  REGISTRY: acritalynorth01.azurecr.io
+  IMAGE_NAME: demo-webapp
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: |
+          python manage.py test --settings=demowebapp.test_settings
+
+  build-and-push:
+    name: Build and Push Container
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      version: ${{ steps.version.outputs.version }}
+      is-release: ${{ steps.version.outputs.is-release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for semantic-release
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install semantic-release
+        run: |
+          npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github
+
+      - name: Determine version
+        id: version
+        run: |
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            # On main branch, create actual release
+            npx semantic-release --dry-run --no-ci > release-output.txt 2>&1 || true
+            
+            if grep -q "The next release version is" release-output.txt; then
+              VERSION=$(grep "The next release version is" release-output.txt | sed 's/.*The next release version is //')
+              echo "version=v${VERSION}" >> $GITHUB_OUTPUT
+              echo "is-release=true" >> $GITHUB_OUTPUT
+              echo "Release version: v${VERSION}"
+            else
+              # No release needed, use commit SHA
+              VERSION="${{ github.sha }}"
+              echo "version=${VERSION}" >> $GITHUB_OUTPUT
+              echo "is-release=false" >> $GITHUB_OUTPUT
+              echo "Development version: ${VERSION}"
+            fi
+          else
+            # On develop branch, use branch name + commit
+            VERSION="develop-${{ github.sha }}"
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
+            echo "is-release=false" >> $GITHUB_OUTPUT
+            echo "Development version: ${VERSION}"
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to Azure Container Registry
+        run: |
+          az acr login --name acritalynorth01
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}-latest
+          labels: |
+            org.opencontainers.image.title=${{ env.IMAGE_NAME }}
+            org.opencontainers.image.description=Demo Web Application
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  release:
+    name: Create Release
+    needs: [test, build-and-push]
+    if: github.ref == 'refs/heads/main' && needs.build-and-push.outputs.is-release == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install semantic-release
+        run: |
+          npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github
+
+      - name: Create .releaserc.json
+        run: |
+          cat > .releaserc.json << EOF
+          {
+            "branches": ["main"],
+            "plugins": [
+              "@semantic-release/commit-analyzer",
+              "@semantic-release/release-notes-generator",
+              "@semantic-release/changelog",
+              ["@semantic-release/git", {
+                "assets": ["CHANGELOG.md"],
+                "message": "chore(release): \${nextRelease.version} [skip ci]\n\n\${nextRelease.notes}"
+              }],
+              "@semantic-release/github"
+            ]
+          }
+          EOF
+
+      - name: Release
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Run semantic release
+          npx semantic-release
+          
+          # Get the version that was just released
+          VERSION=$(git describe --tags --abbrev=0)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+  update-manifests:
+    name: Update Kubernetes Manifests
+    needs: [build-and-push, release]
+    if: always() && needs.build-and-push.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update manifests
+        run: |
+          VERSION="${{ needs.release.outputs.version || needs.build-and-push.outputs.version }}"
+          ENVIRONMENT="${{ github.ref_name }}"
+          
+          echo "Updating manifests for version: $VERSION on branch: $ENVIRONMENT"
+          
+          # Update the image tag in deployment manifest
+          sed -i "s|image: acritalynorth01.azurecr.io/demo-webapp:.*|image: acritalynorth01.azurecr.io/demo-webapp:${VERSION}|g" manifests/deployment.yaml
+          
+          # Check if there are changes to commit
+          if git diff --quiet; then
+            echo "No changes to commit"
+          else
+            git add manifests/
+            
+            if [[ "${{ github.ref_name }}" == "main" ]] && [[ "${{ needs.build-and-push.outputs.is-release }}" == "true" ]]; then
+              git commit -m "chore: update manifests to version $VERSION [skip ci]"
+            else
+              git commit -m "chore: update manifests for $ENVIRONMENT build $VERSION [skip ci]"
+            fi
+            
+            git push
+          fi
+
+  deployment-notification:
+    name: Deployment Status
+    needs: [test, build-and-push, release, update-manifests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage | Status | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.test.result }} | Unit and integration tests |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build & Push | ${{ needs.build-and-push.result }} | Container image build |" >> $GITHUB_STEP_SUMMARY
+          echo "| Release | ${{ needs.release.result || 'skipped' }} | Semantic versioning |" >> $GITHUB_STEP_SUMMARY
+          echo "| Manifest Update | ${{ needs.update-manifests.result }} | Kubernetes manifests |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.build-and-push.outputs.is-release }}" == "true" ]]; then
+            echo "🎉 **Production Release**: ${{ needs.release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "📦 **Container**: acritalynorth01.azurecr.io/demo-webapp:${{ needs.release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🔧 **Development Build**: ${{ needs.build-and-push.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "📦 **Container**: acritalynorth01.azurecr.io/demo-webapp:${{ needs.build-and-push.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Flux will automatically deploy the updated manifests to the AKS cluster." >> $GITHUB_STEP_SUMMARY

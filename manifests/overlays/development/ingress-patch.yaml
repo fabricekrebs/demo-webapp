@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: demo-webapp-ingress
+spec:
+  rules:
+    - host: dev.demo-webapp.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: demo-webapp
+                port:
+                  number: 8000

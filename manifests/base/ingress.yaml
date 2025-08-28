@@ -4,7 +4,6 @@ metadata:
   annotations:
     kubernetes.azure.com/tls-cert-keyvault-uri: https://kv-francecentral-prod-02.vault.azure.net/certificates/wildcard-krfalab-com/4dfdd940a18a4212a015bec7100b87fb
   name: demo-webapp-ingress
-  namespace: demo-webapp
 spec:
   ingressClassName: webapprouting.kubernetes.azure.com
   rules:

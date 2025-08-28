@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: demo-webapp-dev
+
+namePrefix: dev-
+
+commonLabels:
+  app: demo-webapp
+  environment: development
+
+resources:
+  - ../../base
+
+patchesStrategicMerge:
+  - deployment-patch.yaml
+  - ingress-patch.yaml
+
+replicas:
+  - name: demo-webapp
+    count: 2
+
+images:
+  - name: acritalynorth01.azurecr.io/demo-webapp
+    newTag: develop-latest

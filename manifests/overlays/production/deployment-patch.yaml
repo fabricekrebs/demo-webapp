@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-webapp
+spec:
+  template:
+    spec:
+      containers:
+        - name: demo-webapp
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          env:
+            - name: DJANGO_DEBUG
+              value: "False"
+            - name: ENVIRONMENT
+              value: "production"
+            - name: DJANGO_ALLOWED_HOSTS
+              value: "demo-webapp.com,www.demo-webapp.com"
