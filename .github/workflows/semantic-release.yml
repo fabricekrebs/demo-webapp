@@ -61,7 +61,6 @@ jobs:
                 // Look for CI test checks
                 const ciChecks = checks.check_runs.filter(check => 
                   check.name.includes('Run Unit Tests') || 
-                  check.name.includes('CI - Run Tests') ||
                   check.name === 'test'
                 );
                 
