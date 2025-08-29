@@ -21,4 +21,4 @@ replicas:
 
 images:
   - name: acritalynorth01.azurecr.io/demo-webapp
-    newTag: v1.0.0  # This will be updated automatically by your workflows
+    newTag: v1.2.0
