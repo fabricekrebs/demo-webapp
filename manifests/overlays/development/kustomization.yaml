@@ -15,6 +15,7 @@ resources:
 patchesStrategicMerge:
   - deployment-patch.yaml
   - ingress-patch.yaml
+  - configmap-patch.yaml
 
 replicas:
   - name: demo-webapp
