@@ -1,16 +1,23 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
+  annotations:
+    kubernetes.azure.com/tls-cert-keyvault-uri: https://kv-francecentral-prod-02.vault.azure.net/certificates/wildcard-krfalab-com/4dfdd940a18a4212a015bec7100b87fb
   name: demo-webapp-ingress
 spec:
+  ingressClassName: webapprouting.kubernetes.azure.com
   rules:
-    - host: dev.demo-webapp.local
+    - host: demo-webapp-dev.krfa-lab.com
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: demo-webapp
+                name: frontend
                 port:
-                  number: 8000
+                  number: 80
+  tls:
+  - hosts:
+    - demo-webapp-dev.krfa-lab.com
+    secretName: keyvault-demo-webapp-ingress
