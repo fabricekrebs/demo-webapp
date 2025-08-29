@@ -10,9 +10,9 @@ data:
   TIME_ZONE: "Europe/Zurich"
   CORS_ALLOW_ALL_ORIGINS: "True"
   CSRF_TRUSTED_ORIGINS: "https://*.krfa-lab.com"
-  DB_USER: "postgre"
+  DB_USER: "postgres"
   DB_NAME: "demowebapp"
-  DB_HOST: "demo-webapp-aks-01.postgres.database.azure.com"
+  DB_HOST: "psql-italynorth-pgsql-01.postgres.database.azure.com"
   DB_PORT: "5432"
   ENABLE_AZURE_MONITOR: "True"  # Re-enabled with OpenCensus for Python 3.9 compatibility
   ENABLE_LIVE_METRICS: "False"
