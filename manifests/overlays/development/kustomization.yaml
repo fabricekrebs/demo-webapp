@@ -3,7 +3,7 @@ kind: Kustomization
 
 namespace: demo-webapp-dev
 
-namePrefix: dev-
+#namePrefix: dev- #remove name prefix
 
 commonLabels:
   app: demo-webapp
