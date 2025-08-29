@@ -232,22 +232,47 @@ jobs:
           VERSION="${{ needs.semantic-release.outputs.version }}"
           echo "Updating production kustomization with version: $VERSION"
           
+          # Make sure we're on the main branch and it's up to date
+          git checkout main
+          git pull origin main
+          
           # Update the image tag in production overlay
           sed -i "s|newTag: .*|newTag: ${VERSION}|g" manifests/overlays/production/kustomization.yaml
           
           # Check if there are changes to commit
           if git diff --quiet; then
             echo "No changes to commit"
-          else
-            echo "Changes detected in production kustomization:"
-            git diff manifests/overlays/production/kustomization.yaml
+            exit 0
+          fi
+          
+          echo "Changes detected in production kustomization:"
+          git diff manifests/overlays/production/kustomization.yaml
+          
+          git add manifests/overlays/production/kustomization.yaml
+          git commit -m "chore: update production manifests to $VERSION [skip ci]" \
+                     -m "Automated update of production kustomization with semantic version $VERSION." \
+                     -m "This update will be deployed by Flux to the production environment."
+          
+          # Retry push with exponential backoff in case of conflicts
+          for i in {1..5}; do
+            echo "Push attempt $i/5"
             
-            git add manifests/overlays/production/kustomization.yaml
-            git commit -m "chore: update production manifests to $VERSION [skip ci]" \
-                       -m "Automated update of production kustomization with semantic version $VERSION." \
-                       -m "This update will be deployed by Flux to the production environment."
-            
-            git push
+            if git push origin main; then
+              echo "✅ Successfully pushed production manifest update"
+              break
+            else
+              if [ $i -eq 5 ]; then
+                echo "❌ Failed to push after 5 attempts"
+                exit 1
+              fi
+              
+              echo "Push failed, pulling latest changes and retrying..."
+              git pull origin main --rebase
+              
+              # Wait with exponential backoff
+              sleep $((2**i))
+            fi
+          done
             echo "✅ Updated production manifests with version $VERSION"
           fi
 
