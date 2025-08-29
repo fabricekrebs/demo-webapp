@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/fabricekrebs/demo-webapp/compare/v1.1.0...v1.2.0) (2025-08-29)
+
+
+### Features
+
+* add workflow fix test ([c51c63e](https://github.com/fabricekrebs/demo-webapp/commit/c51c63ee46567a9669ec7bf898743068fe091770))
+
 # [1.1.0](https://github.com/fabricekrebs/demo-webapp/compare/v1.0.0...v1.1.0) (2025-08-29)
 
 
