@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/fabricekrebs/demo-webapp/compare/v1.0.0...v1.1.0) (2025-08-29)
+
+
+### Features
+
+* add test feature for semantic release testing ([c325846](https://github.com/fabricekrebs/demo-webapp/commit/c325846062d7e653bc150b8713b65e1dfe45ad7f))
+
 # 1.0.0 (2025-08-28)
 
 
