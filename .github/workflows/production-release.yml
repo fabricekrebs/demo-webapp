@@ -209,10 +209,52 @@ jobs:
           IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.semantic-release.outputs.version }}"
           echo "image=${IMAGE}" >> $GITHUB_OUTPUT
 
+  # Update production manifests with semantic version
+  update-production-manifests:
+    name: Update Production Manifests
+    needs: [build-prod-image, semantic-release]
+    if: needs.semantic-release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update production kustomization with semantic version
+        run: |
+          VERSION="${{ needs.semantic-release.outputs.version }}"
+          echo "Updating production kustomization with version: $VERSION"
+          
+          # Update the image tag in production overlay
+          sed -i "s|newTag: .*|newTag: ${VERSION}|g" manifests/overlays/production/kustomization.yaml
+          
+          # Check if there are changes to commit
+          if git diff --quiet; then
+            echo "No changes to commit"
+          else
+            echo "Changes detected in production kustomization:"
+            git diff manifests/overlays/production/kustomization.yaml
+            
+            git add manifests/overlays/production/kustomization.yaml
+            git commit -m "chore: update production manifests to $VERSION [skip ci]" \
+                       -m "Automated update of production kustomization with semantic version $VERSION." \
+                       -m "This update will be deployed by Flux to the production environment."
+            
+            git push
+            echo "✅ Updated production manifests with version $VERSION"
+          fi
+
   # Summary
   release-summary:
     name: Release Summary
-    needs: [semantic-release, build-prod-image]
+    needs: [semantic-release, build-prod-image, update-production-manifests]
     if: always() && needs.semantic-release.outputs.released == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -224,7 +266,7 @@ jobs:
           echo "📦 **Container Image**: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.semantic-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "🔗 **Also tagged as**: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🚀 **Next Steps**:" >> $GITHUB_STEP_SUMMARY
-          echo "1. Update your GitOps repository with the new version" >> $GITHUB_STEP_SUMMARY
-          echo "2. The semantic version is now available for production deployment" >> $GITHUB_STEP_SUMMARY
-          echo "3. Check the [Releases page](https://github.com/${{ github.repository }}/releases) for changelog" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 **Deployment Status**:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Production manifests updated with semantic version" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔄 Flux will automatically deploy to production environment" >> $GITHUB_STEP_SUMMARY
+          echo "- 📊 Check the [Releases page](https://github.com/${{ github.repository }}/releases) for changelog" >> $GITHUB_STEP_SUMMARY

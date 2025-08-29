@@ -49,17 +49,17 @@ metadata:
   name: demo-webapp-prod
   namespace: flux-system
 spec:
-  interval: 10m0s
+  interval: 5m0s
   path: ./manifests/overlays/production
   prune: true
   sourceRef:
     kind: GitRepository
     name: demo-webapp-prod-source
-  targetNamespace: demo-webapp
+  targetNamespace: demo-webapp-prod
   serviceAccountName: flux-applier
   healthChecks:
     - apiVersion: apps/v1
       kind: Deployment
-      name: demo-webapp
-      namespace: demo-webapp
-  timeout: 15m
+      name: prod-demo-webapp
+      namespace: demo-webapp-prod
+  timeout: 10m
