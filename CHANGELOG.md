@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/fabricekrebs/demo-webapp/compare/v1.2.0...v1.2.1) (2025-08-29)
+
+
+### Bug Fixes
+
+* resolve bash syntax error in production workflow ([9dc88c2](https://github.com/fabricekrebs/demo-webapp/commit/9dc88c209c7b86580e00d0ee78335e463d0b3c16))
+
 # [1.2.0](https://github.com/fabricekrebs/demo-webapp/compare/v1.1.0...v1.2.0) (2025-08-29)
 
 
