@@ -11,7 +11,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: demo-webapp
+                name: frontend
                 port:
                   number: 80
   tls:
