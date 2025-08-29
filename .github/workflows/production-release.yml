@@ -273,8 +273,8 @@ jobs:
               sleep $((2**i))
             fi
           done
-            echo "✅ Updated production manifests with version $VERSION"
-          fi
+          
+          echo "✅ Updated production manifests with version $VERSION"
 
   # Summary
   release-summary:
