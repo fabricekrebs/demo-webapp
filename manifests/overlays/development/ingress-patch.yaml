@@ -5,6 +5,16 @@ metadata:
 spec:
   rules:
     - host: demo-webapp-dev.krfa-lab.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: demo-webapp
+                port:
+                  number: 80
   tls:
   - hosts:
     - demo-webapp-dev.krfa-lab.com
+    secretName: keyvault-demo-webapp-ingress
