@@ -3,4 +3,5 @@ kind: ConfigMap
 metadata:
   name: demo-webapp-env
 data:
+  BACKEND_ADDRESS: "https://demo-webapp-dev.krfa-lab.com"
   DB_NAME: "demowebappdev"
