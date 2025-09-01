@@ -4,7 +4,7 @@ name: Deploy to Azure Container Apps
 on:
   # Trigger after successful semantic release (production only)
   workflow_run:
-    workflows: ["Build and Release"]
+    workflows: ["Production Release"]
     types:
       - completed
     branches: [main]  # Only deploy production releases
