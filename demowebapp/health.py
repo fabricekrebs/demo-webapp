@@ -12,6 +12,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from .version import get_cached_version
+
 logger = logging.getLogger(__name__)
 
 
@@ -22,7 +24,11 @@ def health_check(request):
     Basic health check endpoint that includes database connectivity.
     Returns HTTP 200 if everything is healthy, HTTP 503 if there are issues.
     """
-    health_status = {"status": "healthy", "timestamp": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()), "checks": {}}
+    health_status = {
+        "status": "healthy",
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+        "checks": {},
+    }
 
     status_code = 200
 
@@ -34,8 +40,17 @@ def health_check(request):
         health_status["status"] = "unhealthy"
         status_code = 503
 
+    # Check Application Insights
+    appinsights_status = check_application_insights_health()
+    health_status["checks"]["application_insights"] = appinsights_status
+
+    if not appinsights_status["healthy"]:
+        # Don't mark the entire app as unhealthy for monitoring issues
+        # but include it in the checks
+        logger.warning("Application Insights monitoring is not healthy")
+
     # Add application info
-    health_status["application"] = {"name": "demo-webapp", "version": "1.0.0"}
+    health_status["application"] = {"name": "demo-webapp", "version": get_cached_version()}
 
     return JsonResponse(health_status, status=status_code)
 
@@ -97,7 +112,8 @@ def check_database_health():
             "message": "Database connection failed",
             "troubleshooting": {
                 "steps": [
-                    f"1. Check if the database server at {db_settings.get('HOST', 'unknown')}:{db_settings.get('PORT', 'unknown')} is running",
+                    f"1. Check if the database server at {db_settings.get('HOST', 'unknown')}:"
+                    f"{db_settings.get('PORT', 'unknown')} is running",
                     "2. Verify network connectivity to the database server",
                     "3. Check database server logs for any error messages",
                     "4. Ensure the database is accepting connections",
@@ -128,4 +144,84 @@ def check_database_health():
                     "4. Check if database migrations are up to date",
                 ]
             },
+        }
+
+
+def check_application_insights_health():
+    """
+    Check if Application Insights is properly configured and working.
+
+    Returns:
+        dict: Health status of Application Insights integration
+    """
+    import os
+
+    try:
+        # Check if Application Insights is enabled
+        is_enabled = getattr(settings, "ENABLE_AZURE_MONITOR", False)
+
+        if not is_enabled:
+            return {
+                "healthy": False,
+                "status": "disabled",
+                "message": "Application Insights is disabled",
+                "details": {
+                    "enable_azure_monitor": is_enabled,
+                    "connection_string_set": bool(os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")),
+                },
+            }
+
+        # Check if connection string is available
+        connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
+        if not connection_string:
+            return {
+                "healthy": False,
+                "status": "misconfigured",
+                "message": "Application Insights connection string not set",
+                "details": {
+                    "enable_azure_monitor": is_enabled,
+                    "connection_string_set": False,
+                },
+            }
+
+        # Test if OpenTelemetry components are accessible
+        try:
+            from opentelemetry import metrics, trace
+            from opentelemetry._logs import get_logger_provider
+
+            tracer_provider = trace.get_tracer_provider()
+            meter_provider = metrics.get_meter_provider()
+            logger_provider = get_logger_provider()
+
+            return {
+                "healthy": True,
+                "status": "configured",
+                "message": "Application Insights is properly configured",
+                "details": {
+                    "enable_azure_monitor": is_enabled,
+                    "connection_string_set": True,
+                    "tracer_provider": str(type(tracer_provider).__name__),
+                    "meter_provider": str(type(meter_provider).__name__),
+                    "logger_provider": str(type(logger_provider).__name__),
+                },
+            }
+
+        except Exception as otel_error:
+            return {
+                "healthy": False,
+                "status": "opentelemetry_error",
+                "message": f"OpenTelemetry components not accessible: {str(otel_error)}",
+                "details": {
+                    "enable_azure_monitor": is_enabled,
+                    "connection_string_set": True,
+                    "error": str(otel_error),
+                },
+            }
+
+    except Exception as e:
+        return {
+            "healthy": False,
+            "status": "error",
+            "message": f"Application Insights health check failed: {str(e)}",
+            "details": {"error": str(e)},
         }

@@ -2,7 +2,13 @@ import os
 
 from django.core.management.base import BaseCommand
 
-from tasks.chatbot_service import AuthenticationError, ChatbotError, RateLimitError, get_chatbot_service, is_chatbot_enabled
+from tasks.chatbot_service import (
+    AuthenticationError,
+    ChatbotError,
+    RateLimitError,
+    get_chatbot_service,
+    is_chatbot_enabled,
+)
 from tasks.models import Chat
 
 
@@ -56,7 +62,7 @@ class Command(BaseCommand):
         self.stdout.write("\n3. Checking service health...")
         health = service.get_health_status()
         if health["healthy"]:
-            self.stdout.write(self.style.SUCCESS(f"✅ Service is healthy"))
+            self.stdout.write(self.style.SUCCESS("✅ Service is healthy"))
             if health.get("agent_name"):
                 self.stdout.write(f'   Agent: {health["agent_name"]}')
             if health.get("agent_model"):

@@ -15,6 +15,7 @@ resources:
 patchesStrategicMerge:
   - deployment-patch.yaml
   - ingress-patch.yaml
+  - configmap-patch.yaml
 
 replicas:
   - name: demo-webapp
@@ -22,4 +23,4 @@ replicas:
 
 images:
   - name: acritalynorth01.azurecr.io/demo-webapp
-    newTag: develop-latest
+    newTag: develop-db74a2c

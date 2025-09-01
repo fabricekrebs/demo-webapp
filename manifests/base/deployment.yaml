@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: demo-webapp
 spec:
-  replicas: 4
+  replicas: 2
   selector:
     matchLabels:
       app: demo-webapp
@@ -17,20 +17,20 @@ spec:
           image: acritalynorth01.azurecr.io/demo-webapp:latest # Replace with your image
           ports:
             - containerPort: 8000
-          # Resource limits and requests
+          # Optimized resource limits and requests
           resources:
             requests:
-              memory: "256Mi"
-              cpu: "250m"
+              memory: "200Mi"
+              cpu: "200m"
             limits:
-              memory: "512Mi"
-              cpu: "500m"
-          # Health checks
+              memory: "400Mi"
+              cpu: "400m"
+          # Improved health checks
           livenessProbe:
             httpGet:
               path: /health/
               port: 8000
-            initialDelaySeconds: 60
+            initialDelaySeconds: 45
             periodSeconds: 30
             timeoutSeconds: 10
             failureThreshold: 3
@@ -38,11 +38,28 @@ spec:
             httpGet:
               path: /health/
               port: 8000
-            initialDelaySeconds: 30
+            initialDelaySeconds: 20
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+          # Startup probe to prevent premature kills
+          startupProbe:
+            httpGet:
+              path: /health/
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 20
           env:
+            # Performance environment variables
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: PYTHONHASHSEED
+              value: "random"
+            # Existing secret environment variables
             - name: APPLICATIONINSIGHTS_CONNECTION_STRING
               valueFrom:
                 secretKeyRef:

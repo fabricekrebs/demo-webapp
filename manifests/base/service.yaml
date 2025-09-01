@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: demo-webapp
+  name: frontend
 spec:
   type: ClusterIP
   selector:

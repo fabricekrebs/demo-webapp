@@ -5,7 +5,6 @@ Base test configuration and utilities for the demo webapp.
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 
 from tasks.models import Chat, ChatMessage, Project, Task

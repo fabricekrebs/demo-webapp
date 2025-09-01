@@ -1,16 +1,9 @@
-import json
 import logging
-import os
 from datetime import datetime
 
 from django.conf import settings
-from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
 from django.shortcuts import render
-from django.urls import reverse_lazy
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
 
 from dotenv import load_dotenv
 from rest_framework import generics

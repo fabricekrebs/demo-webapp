@@ -171,7 +171,10 @@ class DatabaseHealthCheckMiddleware:
                     <h3>Diagnostic Commands</h3>
                     <p>You can run these commands to diagnose the issue:</p>
                     <ul>
-                        {"".join([f'<li><code class="command">{cmd}</code></li>' for cmd in error_data['troubleshooting']['commands']])}
+                        {"".join([
+                            f'<li><code class="command">{cmd}</code></li>'
+                            for cmd in error_data['troubleshooting']['commands']
+                        ])}
                     </ul>
                 </div>
             </div>

@@ -4,12 +4,11 @@ Integration tests for API workflows and cross-endpoint functionality.
 
 from unittest.mock import patch
 
-from django.contrib.auth.models import User
 from django.urls import reverse
 
 from rest_framework import status
 
-from tasks.models import Chat, ChatMessage, Project, Task
+from tasks.models import Project, Task
 
 from .test_base import BaseAPITestCase
 
@@ -130,7 +129,10 @@ class APIIntegrationTestCase(BaseAPITestCase):
         # Step 2: Send messages to chat (mock chatbot to avoid Azure integration)
         message_url = reverse("chat-message-create", kwargs={"chat_id": chat_id})
 
-        with patch("tasks.views.is_chatbot_enabled") as mock_enabled, patch("tasks.views.get_chatbot_service") as mock_service:
+        with (
+            patch("tasks.views.is_chatbot_enabled") as mock_enabled,
+            patch("tasks.views.get_chatbot_service") as mock_service,
+        ):
 
             mock_enabled.return_value = True
             mock_chatbot = mock_service.return_value
@@ -161,7 +163,10 @@ class APIIntegrationTestCase(BaseAPITestCase):
 
         # Step 5: Clear conversation
         clear_url = reverse("clear-conversation", kwargs={"chat_id": chat_id})
-        with patch("tasks.views.is_chatbot_enabled") as mock_enabled, patch("tasks.views.get_chatbot_service") as mock_service:
+        with (
+            patch("tasks.views.is_chatbot_enabled") as mock_enabled,
+            patch("tasks.views.get_chatbot_service") as mock_service,
+        ):
 
             mock_enabled.return_value = True
             mock_chatbot = mock_service.return_value

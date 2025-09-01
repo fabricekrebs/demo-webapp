@@ -9,7 +9,7 @@ on:
       - develop
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 env:
@@ -131,6 +131,8 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
+          build-args: |
+            APP_VERSION=${{ steps.version.outputs.version }}
           tags: |
             ${{ steps.version.outputs.image }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop-latest
@@ -152,5 +154,93 @@ jobs:
           echo "🏷️  **Also tagged as**: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop-latest" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🚀 **Next Steps**:" >> $GITHUB_STEP_SUMMARY
-          echo "- Flux will automatically pull the \`develop-latest\` tag for development deployments" >> $GITHUB_STEP_SUMMARY
-          echo "- For production releases, create a PR from \`develop\` to \`main\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Development manifests will be updated with specific version tag" >> $GITHUB_STEP_SUMMARY
+          echo "- Flux will automatically deploy the updated version to development environment" >> $GITHUB_STEP_SUMMARY
+
+  # Update development manifests with specific version tag
+  update-development-manifests:
+    name: Update Development Manifests
+    needs: [build-dev-image]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Update development kustomization with specific version
+        run: |
+          VERSION="${{ needs.build-dev-image.outputs.version }}"
+          echo "Updating development kustomization with version: $VERSION"
+          
+          # Make sure we're on the develop branch and it's up to date
+          git checkout develop
+          git pull origin develop
+          
+          # Update the image tag in development overlay
+          sed -i "s|newTag: .*|newTag: ${VERSION}|g" manifests/overlays/development/kustomization.yaml
+          
+          # Check if there are changes to commit
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          echo "Changes detected in development kustomization:"
+          git diff manifests/overlays/development/kustomization.yaml
+          
+          git add manifests/overlays/development/kustomization.yaml
+          git commit -m "chore: update development manifests to $VERSION [skip ci]" \
+                     -m "Automated update of development kustomization with version $VERSION." \
+                     -m "This update will be deployed by Flux to the development environment."
+          
+          # Retry push with exponential backoff in case of conflicts
+          for i in {1..5}; do
+            echo "Push attempt $i/5"
+            
+            if git push origin develop; then
+              echo "✅ Successfully pushed development manifest update"
+              break
+            else
+              if [ $i -eq 5 ]; then
+                echo "❌ Failed to push after 5 attempts"
+                exit 1
+              fi
+              
+              echo "Push failed, pulling latest changes and retrying..."
+              git pull origin develop --rebase
+              
+              # Wait with exponential backoff
+              sleep $((2**i))
+            fi
+          done
+          
+          echo "✅ Updated development manifests with version $VERSION"
+
+  # Summary
+  development-summary:
+    name: Development Summary
+    needs: [build-dev-image, update-development-manifests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Development Build Summary
+        run: |
+          echo "## 🔧 Development Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🏷️ **Version**: ${{ needs.build-dev-image.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "📦 **Container Image**: ${{ needs.build-dev-image.outputs.image }}" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **Also tagged as**: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop-latest" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 **Deployment Status**:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Development manifests updated with specific version tag" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔄 Flux will automatically deploy to development environment" >> $GITHUB_STEP_SUMMARY
+          echo "- 📊 Version ${{ needs.build-dev-image.outputs.version }} will be deployed" >> $GITHUB_STEP_SUMMARY
