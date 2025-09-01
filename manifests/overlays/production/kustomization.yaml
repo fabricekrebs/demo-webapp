@@ -21,4 +21,4 @@ replicas:
 
 images:
   - name: acritalynorth01.azurecr.io/demo-webapp
-    newTag: v1.2.5
+    newTag: v1.2.6
