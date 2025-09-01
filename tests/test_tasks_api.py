@@ -2,16 +2,11 @@
 Unit tests for the Tasks API endpoints.
 """
 
-import json
-from datetime import datetime, timedelta
-
-from django.contrib.auth.models import User
 from django.urls import reverse
 
 from rest_framework import status
-from rest_framework.test import APITestCase
 
-from tasks.models import Project, Task
+from tasks.models import Task
 
 from .test_base import BaseAPITestCase
 

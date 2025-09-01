@@ -1,0 +1,17 @@
+# Development and CI/CD dependencies
+-r requirements.txt  # Include production requirements
+
+# Code quality and testing tools
+# Using pip-audit as primary security scanner (more reliable than safety)
+pip-audit>=2.6.0  # Modern security vulnerability scanner
+# safety==3.2.7  # Alternative security scanner (commented due to typer compatibility issues)
+typer==0.12.5  # Pin typer version for compatibility
+rich==13.7.1  # Pin rich version for compatibility
+packaging>=22.0  # Compatible packaging version for modern tools
+black>=22.0.0  # Code formatter
+isort>=5.10.0  # Import sorter
+flake8>=4.0.0  # Linting tool
+bandit>=1.7.0  # Security linting tool
+pytest>=7.0.0  # Testing framework
+pytest-django>=4.5.0  # Django integration for pytest
+coverage>=6.0.0  # Code coverage measurement

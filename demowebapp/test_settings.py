@@ -4,7 +4,7 @@ Test settings for GitHub Actions CI
 
 import os
 
-from .settings import *
+from .settings import *  # noqa: F403, F401
 
 # Override database settings for testing
 if "CI" in os.environ or "GITHUB_ACTIONS" in os.environ:
@@ -24,7 +24,7 @@ else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "test_db.sqlite3",
+            "NAME": BASE_DIR / "test_db.sqlite3",  # noqa: F405
         }
     }
 
@@ -32,8 +32,9 @@ else:
 ENABLE_AZURE_MONITOR = False
 
 # Override Azure Monitor environment variables to prevent initialization
-import os
+import os  # noqa: E402
 
+# Disable Azure Monitor for tests
 os.environ["ENABLE_AZURE_MONITOR"] = "False"
 os.environ.pop("APPLICATIONINSIGHTS_CONNECTION_STRING", None)
 
@@ -91,7 +92,7 @@ CACHES = {
 }
 
 # Media files for testing
-MEDIA_ROOT = BASE_DIR / "test_media"
+MEDIA_ROOT = BASE_DIR / "test_media"  # noqa: F405
 
 # Static files for testing
-STATIC_ROOT = BASE_DIR / "test_static"
+STATIC_ROOT = BASE_DIR / "test_static"  # noqa: F405

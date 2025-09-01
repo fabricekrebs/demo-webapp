@@ -21,19 +21,13 @@ from azure.identity import DefaultAzureCredential
 class ChatbotError(Exception):
     """Custom exception for chatbot-related errors."""
 
-    pass
-
 
 class RateLimitError(ChatbotError):
     """Exception raised when rate limits are exceeded."""
 
-    pass
-
 
 class AuthenticationError(ChatbotError):
     """Exception raised when authentication fails."""
-
-    pass
 
 
 def rate_limit(calls_per_minute: int = 60):
@@ -210,7 +204,7 @@ class EnhancedChatbotService:
         if run.status == "failed":
             error_msg = getattr(run, "last_error", "Unknown error")
             self.logger.error(f"Azure run failed: {error_msg}")
-            return f"[Service Error] I'm having trouble processing your request. Please try again later."
+            return "[Service Error] I'm having trouble processing your request. Please try again later."
 
         if run.status == "expired":
             self.logger.warning(f"Azure run expired for thread {thread_id}")

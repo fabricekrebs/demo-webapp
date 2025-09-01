@@ -48,54 +48,75 @@ LOGGING = {
     },
 }
 
-# Azure Monitor integration - using OpenCensus instead of OpenTelemetry for Python 3.9 compatibility
+# Azure Monitor integration - Modern OpenTelemetry approach with OpenCensus fallback
 ENABLE_AZURE_MONITOR = os.getenv("ENABLE_AZURE_MONITOR", "False").lower() in ("true", "1", "t")
 
 if ENABLE_AZURE_MONITOR:
-    try:
-        # Use OpenCensus instead of OpenTelemetry for better Python 3.9 compatibility
-        connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
-        if connection_string:
-            import logging
-
-            from opencensus.ext.azure.log_exporter import AzureLogHandler
-
-            # Add Azure handler to the root logger
-            azure_handler = AzureLogHandler(connection_string=connection_string)
-            azure_handler.setLevel(logging.INFO)
-
-            # Get the root logger and add our handler
-            root_logger = logging.getLogger()
-            root_logger.addHandler(azure_handler)
-
-            print("Azure Monitor configured successfully using OpenCensus")
-        else:
-            print("Warning: APPLICATIONINSIGHTS_CONNECTION_STRING not set, skipping Azure Monitor")
-            ENABLE_AZURE_MONITOR = False
-
-    except ImportError:
-        print("Warning: OpenCensus Azure libraries not available, trying OpenTelemetry fallback")
-        # Fallback to OpenTelemetry only if OpenCensus is not available
-        try:
-            from azure.monitor.opentelemetry import configure_azure_monitor
-
-            configure_azure_monitor(
-                connection_string=os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"),
-                enable_live_metrics=os.getenv("ENABLE_LIVE_METRICS", "False").lower() in ("true", "1", "t"),
-                resource_attributes={
-                    "service.name": "demo-webapp",
-                    "service.version": "1.0.0",
-                },
-            )
-            print("Azure Monitor configured successfully using OpenTelemetry fallback")
-
-        except Exception as e:
-            print(f"Warning: Both OpenCensus and OpenTelemetry configuration failed: {e}")
-            ENABLE_AZURE_MONITOR = False
-
-    except Exception as e:
-        print(f"Warning: Failed to configure Azure Monitor with OpenCensus: {e}")
+    connection_string = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING")
+    if not connection_string:
+        print("Warning: APPLICATIONINSIGHTS_CONNECTION_STRING not set, skipping Azure Monitor")
         ENABLE_AZURE_MONITOR = False
+    else:
+        # Try optimized OpenTelemetry approach for better performance
+        try:
+            from demowebapp.opentelemetry_config import (
+                configure_opentelemetry_logging,
+                configure_opentelemetry_metrics,
+                configure_opentelemetry_safe,
+                configure_selective_instrumentation,
+            )
+
+            # Configure optimized OpenTelemetry for tracing, logging, and metrics
+            telemetry_configured = configure_opentelemetry_safe()
+            logging_configured = configure_opentelemetry_logging()
+
+            # Only enable metrics if explicitly requested
+            metrics_enabled = os.getenv("AZURE_MONITOR_ENABLE_METRICS", "false").lower() == "true"
+            if metrics_enabled:
+                metrics_configured = configure_opentelemetry_metrics()
+            else:
+                metrics_configured = True  # Skip metrics to save resources
+
+            if telemetry_configured and logging_configured:
+                print("✅ Azure Monitor configured successfully using optimized OpenTelemetry")
+                if metrics_enabled and metrics_configured:
+                    print("✅ Optimized metrics collection enabled")
+                elif metrics_enabled:
+                    print("⚠️ Metrics collection failed, but tracing and logging are working")
+                else:
+                    print("ℹ️ Metrics collection disabled for performance optimization")
+
+                # Enable selective automatic instrumentation
+                try:
+                    instrumentation_configured = configure_selective_instrumentation()
+                    if instrumentation_configured:
+                        print("✅ Selective auto-instrumentation enabled for performance")
+                except Exception as e:
+                    print(f"Warning: Selective auto-instrumentation setup failed: {e}")
+            else:
+                raise Exception("Optimized OpenTelemetry configuration failed")
+
+        except Exception as otel_error:
+            print(f"Warning: OpenTelemetry configuration failed: {otel_error}")
+            print("Falling back to OpenCensus for logging only...")
+
+            # Fallback to OpenCensus for basic logging
+            try:
+                import logging
+
+                from opencensus.ext.azure.log_exporter import AzureLogHandler
+
+                azure_handler = AzureLogHandler(connection_string=connection_string)
+                azure_handler.setLevel(logging.INFO)
+
+                root_logger = logging.getLogger()
+                root_logger.addHandler(azure_handler)
+
+                print("⚠️ Azure Monitor configured with OpenCensus fallback (logging only)")
+
+            except Exception as opencensus_error:
+                print(f"❌ Both OpenTelemetry and OpenCensus configuration failed: {opencensus_error}")
+                ENABLE_AZURE_MONITOR = False
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -154,6 +175,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "demowebapp.context_processors.backend_address",
+                "demowebapp.context_processors.app_version",
             ],
         },
     },
@@ -175,10 +197,10 @@ DATABASES = {
         "HOST": DB_HOST,
         "PORT": os.getenv("DB_PORT", "5432"),
         "OPTIONS": {
-            "connect_timeout": 30,  # Connection timeout in seconds
-            "options": "-c statement_timeout=30000",  # Query timeout in milliseconds (30 seconds)
+            "connect_timeout": int(os.getenv("DB_OPTIONS_CONNECT_TIMEOUT", "30")),
+            "options": f"-c statement_timeout={os.getenv('DB_OPTIONS_STATEMENT_TIMEOUT', '30000')}",
         },
-        "CONN_MAX_AGE": 0,  # Don't persist connections to avoid hanging on dead connections
+        "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "0")),  # Connection pooling
         "CONN_HEALTH_CHECKS": True,  # Enable connection health checks (Django 4.1+)
     }
 }
@@ -240,6 +262,8 @@ LOGIN_URL = "/auth/login/"
 LOGIN_REDIRECT_URL = "/chatbot/"
 LOGOUT_REDIRECT_URL = "/"
 
-# Session settings
-SESSION_COOKIE_AGE = 3600  # 1 hour
+# Session settings - Performance optimized
+SESSION_ENGINE = os.getenv("SESSION_ENGINE", "django.contrib.sessions.backends.db")
+SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", "3600"))  # Default 1 hour
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_SAVE_EVERY_REQUEST = os.getenv("SESSION_SAVE_EVERY_REQUEST", "True").lower() in ("true", "1", "t")

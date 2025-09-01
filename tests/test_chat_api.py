@@ -2,7 +2,6 @@
 Unit tests for the Chat API endpoints (excluding Azure AI integration).
 """
 
-import json
 from unittest.mock import patch
 
 from django.urls import reverse
@@ -171,7 +170,10 @@ class ChatMessageAPITestCase(BaseAPITestCase):
         data = {"message": "Hello, this is a test message"}
 
         # Mock both the chatbot service and enabled check
-        with patch("tasks.views.is_chatbot_enabled") as mock_enabled, patch("tasks.views.get_chatbot_service") as mock_service:
+        with (
+            patch("tasks.views.is_chatbot_enabled") as mock_enabled,
+            patch("tasks.views.get_chatbot_service") as mock_service,
+        ):
 
             mock_enabled.return_value = True
             mock_chatbot = mock_service.return_value
@@ -264,7 +266,10 @@ class ChatUtilityAPITestCase(BaseAPITestCase):
         url = reverse("clear-conversation", kwargs={"chat_id": self.test_chat.id})
 
         # Mock the chatbot service
-        with patch("tasks.views.is_chatbot_enabled") as mock_enabled, patch("tasks.views.get_chatbot_service") as mock_service:
+        with (
+            patch("tasks.views.is_chatbot_enabled") as mock_enabled,
+            patch("tasks.views.get_chatbot_service") as mock_service,
+        ):
 
             mock_enabled.return_value = True
             mock_chatbot = mock_service.return_value
@@ -296,11 +301,18 @@ class ChatUtilityAPITestCase(BaseAPITestCase):
         url = reverse("conversation-summary", kwargs={"chat_id": self.test_chat.id})
 
         # Mock the chatbot service to return a summary
-        with patch("tasks.views.is_chatbot_enabled") as mock_enabled, patch("tasks.views.get_chatbot_service") as mock_service:
+        with (
+            patch("tasks.views.is_chatbot_enabled") as mock_enabled,
+            patch("tasks.views.get_chatbot_service") as mock_service,
+        ):
 
             mock_enabled.return_value = True
             mock_chatbot = mock_service.return_value
-            mock_chatbot.get_conversation_summary.return_value = {"total_messages": 2, "user_messages": 1, "bot_messages": 1}
+            mock_chatbot.get_conversation_summary.return_value = {
+                "total_messages": 2,
+                "user_messages": 1,
+                "bot_messages": 1,
+            }
 
             response = self.client.get(url)
 

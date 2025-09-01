@@ -9,9 +9,10 @@ from tasks.views import (
     conversation_summary,
 )
 
-from .views import ProjectDetail, ProjectListCreate, TaskDetail, TaskListCreate, UserListCreate
+from .views import ProjectDetail, ProjectListCreate, TaskDetail, TaskListCreate, UserListCreate, app_info
 
 urlpatterns = [
+    path("info/", app_info, name="app-info"),
     path("tasks/", TaskListCreate.as_view(), name="task-list-create"),
     path("tasks/<int:pk>/", TaskDetail.as_view(), name="task-detail"),
     path("projects/", ProjectListCreate.as_view(), name="project-list-create"),
