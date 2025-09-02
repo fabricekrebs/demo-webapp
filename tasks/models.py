@@ -39,6 +39,22 @@ class ChatMessage(models.Model):
     message = models.TextField()
     is_bot = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Add fields for async processing
+    PROCESSING_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ]
+    processing_status = models.CharField(
+        max_length=20, 
+        choices=PROCESSING_STATUS_CHOICES, 
+        default='completed',
+        help_text="Status of message processing for Azure AI responses"
+    )
+    azure_run_id = models.CharField(max_length=128, null=True, blank=True, help_text="Azure AI run ID for tracking")
+    error_message = models.TextField(null=True, blank=True, help_text="Error message if processing failed")
 
     def __str__(self):
         return f"{'Bot' if self.is_bot else 'User'}: {self.message[:30]}..."

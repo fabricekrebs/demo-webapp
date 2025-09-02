@@ -116,14 +116,38 @@ class ChatMessageCreateView(APIView):
             # Get chatbot response
             try:
                 chatbot_service = get_chatbot_service()
-                bot_response = chatbot_service.send_message(message=user_message, chat=chat, user_context=user_context)
+                
+                # Check if message might trigger agent actions (simple heuristic)
+                # These patterns often trigger Azure AI agents to perform external actions
+                trigger_patterns = [
+                    'create', 'add', 'make', 'new', 'task', 'projet', 'tâche', 'créer', 'ajouter',
+                    'list', 'show', 'get', 'find', 'voir', 'afficher', 'lister', 'chercher'
+                ]
+                
+                might_trigger_actions = any(pattern.lower() in user_message.lower() for pattern in trigger_patterns)
+                
+                if might_trigger_actions:
+                    # Use async processing for potentially long-running requests
+                    self.logger.info(f"Using async processing for potentially long-running request: {user_message[:50]}...")
+                    bot_msg_obj = chatbot_service.send_message_async(
+                        message=user_message, 
+                        chat=chat, 
+                        user_message_obj=user_msg_obj,
+                        user_context=user_context
+                    )
+                    
+                    # Return both messages with processing status
+                    return Response(ChatMessageSerializer([user_msg_obj, bot_msg_obj], many=True).data)
+                else:
+                    # Use synchronous processing for simple questions
+                    bot_response = chatbot_service.send_message(message=user_message, chat=chat, user_context=user_context)
 
-                # Save bot response
-                bot_msg_obj = ChatMessage.objects.create(chat=chat, message=bot_response, is_bot=True)
-                logger.debug(f"Bot message saved: {bot_msg_obj.id}")
+                    # Save bot response
+                    bot_msg_obj = ChatMessage.objects.create(chat=chat, message=bot_response, is_bot=True)
+                    logger.debug(f"Bot message saved: {bot_msg_obj.id}")
 
-                # Return both messages
-                return Response(ChatMessageSerializer([user_msg_obj, bot_msg_obj], many=True).data)
+                    # Return both messages
+                    return Response(ChatMessageSerializer([user_msg_obj, bot_msg_obj], many=True).data)
 
             except RateLimitError as e:
                 logger.warning(f"Rate limit exceeded for chat_id={chat_id}: {e}")
@@ -236,6 +260,39 @@ def conversation_summary(request, chat_id):
         else:
             return Response({"error": "Chatbot not available"}, status=503)
 
+    except Chat.DoesNotExist:
+        return Response({"error": "Chat not found"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def check_message_status(request, chat_id):
+    """Check status of processing messages in a chat."""
+    try:
+        chat = Chat.objects.get(id=chat_id)
+        
+        # Get processing messages from the last 10 minutes
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        recent_processing = ChatMessage.objects.filter(
+            chat=chat,
+            is_bot=True,
+            processing_status__in=['processing', 'pending'],
+            created_at__gte=timezone.now() - timedelta(minutes=10)
+        ).order_by('-created_at')
+        
+        if not recent_processing.exists():
+            return Response({"has_processing": False, "messages": []})
+        
+        # Return current status
+        return Response({
+            "has_processing": True,
+            "messages": ChatMessageSerializer(recent_processing, many=True).data
+        })
+        
     except Chat.DoesNotExist:
         return Response({"error": "Chat not found"}, status=404)
     except Exception as e:

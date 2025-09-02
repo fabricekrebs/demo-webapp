@@ -114,6 +114,7 @@ class EnhancedChatbotService:
     def send_message(self, message: str, chat, user_context: Optional[Dict] = None) -> str:
         """
         Send a message to the chatbot and get response.
+        Now supports async processing to prevent worker timeouts.
 
         Args:
             message: User message
@@ -121,7 +122,7 @@ class EnhancedChatbotService:
             user_context: Optional user context for personalization
 
         Returns:
-            Bot response string
+            Bot response string or status message for async processing
         """
         try:
             return self._retry_on_failure(self._send_message_internal, message, chat, user_context)
@@ -133,8 +134,66 @@ class EnhancedChatbotService:
             self.logger.exception(f"Unexpected error in send_message: {e}")
             return f"[Error] Sorry, I encountered an unexpected error: {str(e)}"
 
+    def send_message_async(self, message: str, chat, user_message_obj, user_context: Optional[Dict] = None) -> None:
+        """
+        Send a message asynchronously to prevent worker timeouts.
+        This method starts the Azure AI processing and returns immediately.
+        
+        Args:
+            message: User message
+            chat: Chat model instance
+            user_message_obj: ChatMessage instance for the user message
+            user_context: Optional user context for personalization
+        """
+        from .models import ChatMessage  # Import here to avoid circular import
+        
+        try:
+            # Create a placeholder bot message with 'processing' status
+            bot_msg_obj = ChatMessage.objects.create(
+                chat=chat, 
+                message="🤔 I'm processing your request...", 
+                is_bot=True,
+                processing_status='processing'
+            )
+            
+            # Start async processing using threading (minimal implementation)
+            import threading
+            thread = threading.Thread(
+                target=self._process_message_async,
+                args=(message, chat, bot_msg_obj, user_context),
+                daemon=True
+            )
+            thread.start()
+            
+            return bot_msg_obj
+            
+        except Exception as e:
+            self.logger.exception(f"Error starting async processing: {e}")
+            raise ChatbotError(f"Failed to start async processing: {e}")
+
+    def _process_message_async(self, message: str, chat, bot_msg_obj, user_context: Optional[Dict] = None):
+        """Background processing of Azure AI message."""
+        from .models import ChatMessage  # Import here to avoid circular import
+        
+        try:
+            # Process the message using the existing internal method
+            response = self._send_message_internal(message, chat, user_context)
+            
+            # Update the bot message with the actual response
+            bot_msg_obj.message = response
+            bot_msg_obj.processing_status = 'completed'
+            bot_msg_obj.save()
+            
+        except Exception as e:
+            self.logger.exception(f"Error in async message processing: {e}")
+            # Update the bot message with error
+            bot_msg_obj.message = f"[Error] Sorry, I encountered an error processing your request: {str(e)}"
+            bot_msg_obj.processing_status = 'failed'
+            bot_msg_obj.error_message = str(e)
+            bot_msg_obj.save()
+
     def _send_message_internal(self, message: str, chat, user_context: Optional[Dict] = None) -> str:
-        """Internal method to send message with error handling."""
+        """Internal method to send message with error handling and timeout protection."""
         thread_id = getattr(chat, "azure_thread_id", None)
 
         try:
@@ -166,8 +225,28 @@ class EnhancedChatbotService:
             self.client.agents.messages.create(thread_id=thread_id, role="user", content=enhanced_message)
             self.logger.debug(f"Sent user message to thread {thread_id}")
 
-            # Create and process run with timeout
-            run = self.client.agents.runs.create_and_process(thread_id=thread_id, agent_id=self.agent_id)
+            # Create run (non-blocking) and then poll with timeout protection
+            run = self.client.agents.runs.create(thread_id=thread_id, agent_id=self.agent_id)
+            
+            # Poll for completion with timeout
+            max_wait_time = min(self.timeout - 5, 25)  # Leave 5 seconds buffer for response processing
+            poll_interval = 2  # Poll every 2 seconds
+            wait_time = 0
+            
+            while wait_time < max_wait_time:
+                run = self.client.agents.runs.get(thread_id=thread_id, run_id=run.id)
+                
+                if run.status in ['completed', 'failed', 'cancelled', 'expired']:
+                    break
+                    
+                time.sleep(poll_interval)
+                wait_time += poll_interval
+                self.logger.debug(f"Polling Azure AI run status: {run.status} (waited {wait_time}s)")
+            
+            # If still running after timeout, return a timeout message
+            if run.status in ['queued', 'in_progress', 'requires_action']:
+                self.logger.warning(f"Azure AI run timed out after {wait_time}s, status: {run.status}")
+                return "[Processing] Your request is taking longer than expected. The agent might be performing complex actions. Please check back in a moment."
 
             # Handle run results
             return self._process_run_result(run, thread_id)

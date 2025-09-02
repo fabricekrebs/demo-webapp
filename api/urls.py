@@ -7,6 +7,7 @@ from tasks.views import (
     chatbot_config,
     clear_conversation,
     conversation_summary,
+    check_message_status,
 )
 
 from .views import ProjectDetail, ProjectListCreate, TaskDetail, TaskListCreate, UserListCreate, app_info
@@ -21,6 +22,7 @@ urlpatterns = [
     path("chats/", ChatListCreateView.as_view(), name="chat-list-create"),
     path("chats/<int:pk>/", ChatDetailView.as_view(), name="chat-detail"),
     path("chats/<int:chat_id>/messages/", ChatMessageCreateView.as_view(), name="chat-message-create"),
+    path("chats/<int:chat_id>/status/", check_message_status, name="check-message-status"),
     path("chats/<int:chat_id>/clear/", clear_conversation, name="clear-conversation"),
     path("chats/<int:chat_id>/summary/", conversation_summary, name="conversation-summary"),
     path("chats/config/", chatbot_config, name="chatbot-config"),
