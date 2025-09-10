@@ -18,15 +18,15 @@ data:
   DB_PORT: "5432"
   # Optimized Azure Monitor settings
   ENABLE_AZURE_MONITOR: "True"
-  AZURE_MONITOR_SAMPLING_RATE: "0.05"  # Reduced to 5% for better performance
-  AZURE_MONITOR_ENABLE_METRICS: "false"
+  AZURE_MONITOR_SAMPLING_RATE: "1.0"  # 100% sampling for demo
+  AZURE_MONITOR_ENABLE_METRICS: "true"
   AZURE_MONITOR_METRICS_INTERVAL: "600000"  # 10 minutes
-  AZURE_MONITOR_INSTRUMENT_DB: "false"  # Disabled for performance
-  AZURE_MONITOR_INSTRUMENT_HTTP: "false"
+  AZURE_MONITOR_INSTRUMENT_DB: "true"  # Enable for testing
+  AZURE_MONITOR_INSTRUMENT_HTTP: "true"  # Enable for testing
   AZURE_MONITOR_MAX_QUEUE_SIZE: "256"  # Reduced from 512
   AZURE_MONITOR_MAX_EXPORT_BATCH_SIZE: "64"  # Reduced from 128
-  AZURE_MONITOR_EXPORT_TIMEOUT: "15000"  # 15 seconds
-  AZURE_MONITOR_SCHEDULE_DELAY: "10000"  # 10 seconds
+  AZURE_MONITOR_EXPORT_TIMEOUT: "5000"   # 5 seconds for testing
+  AZURE_MONITOR_SCHEDULE_DELAY: "2000"   # 2 seconds for testing
   # Gunicorn performance settings
   GUNICORN_WORKERS: "2"  # Reduced from 4
   GUNICORN_MAX_REQUESTS: "1000"  # Prevent memory leaks
