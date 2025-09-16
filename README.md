@@ -9,7 +9,7 @@ This is a custom application built to serve multiple purposes:
 
 > **Disclaimer:** This is not an official Microsoft repository. It is my own repository, created for demonstration and educational purposes.
 
-## Local developpment Setup Instructions
+## Local Development Setup Instructions
 <details>
 
 ### 1. Create a Virtual Environment
