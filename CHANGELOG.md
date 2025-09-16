@@ -1,3 +1,10 @@
+## [1.2.7](https://github.com/fabricekrebs/demo-webapp/compare/v1.2.6...v1.2.7) (2025-09-16)
+
+
+### Bug Fixes
+
+* correct typo in README.md ([2a4509d](https://github.com/fabricekrebs/demo-webapp/commit/2a4509dfb875537566327a4f8db2ccf029c1c46f))
+
 ## [1.2.6](https://github.com/fabricekrebs/demo-webapp/compare/v1.2.5...v1.2.6) (2025-09-01)
 
 
