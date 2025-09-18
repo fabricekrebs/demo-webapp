@@ -9,7 +9,7 @@ gunicorn  # Python WSGI HTTP Server for UNIX to deploy Django applications in pr
 opencensus-ext-azure>=1.1.13  # Azure integration for OpenCensus distributed tracing and monitoring.
 opencensus-ext-logging>=0.1.1  # Logging integration for OpenCensus tracing to capture log events.
 # OpenTelemetry as fallback with pinned versions to avoid compatibility issues
-azure-monitor-opentelemetry==1.2.0  # Azure Monitor integration for OpenTelemetry observability and monitoring.
+azure-monitor-opentelemetry==1.8.1  # Azure Monitor integration for OpenTelemetry observability and monitoring.
 opentelemetry-api==1.37.0  # OpenTelemetry API for distributed tracing and observability instrumentation.
 opentelemetry-sdk==1.37.0  # OpenTelemetry SDK providing core implementation for tracing and metrics.
 opentelemetry-instrumentation-django==0.58b0  # Django auto-instrumentation for OpenTelemetry distributed tracing.
