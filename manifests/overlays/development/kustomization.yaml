@@ -23,4 +23,4 @@ replicas:
 
 images:
   - name: acritalynorth01.azurecr.io/demo-webapp
-    newTag: develop-2a4509d
+    newTag: develop-ef68f8f
