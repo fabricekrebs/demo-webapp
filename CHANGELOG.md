@@ -1,3 +1,10 @@
+## [1.2.8](https://github.com/fabricekrebs/demo-webapp/compare/v1.2.7...v1.2.8) (2025-09-30)
+
+
+### Bug Fixes
+
+* upgrade gunicorn from 21.2.0 to 23.0.0 ([ba17aad](https://github.com/fabricekrebs/demo-webapp/commit/ba17aad3f13ddd1e350579c30b75970b98046ab0))
+
 ## [1.2.7](https://github.com/fabricekrebs/demo-webapp/compare/v1.2.6...v1.2.7) (2025-09-16)
 
 
