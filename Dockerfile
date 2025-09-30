@@ -32,8 +32,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Install Python dependencies with optimizations
-RUN pip install --no-cache-dir --compile -r requirements.txt \
-    && pip install --no-cache-dir --compile gunicorn[gevent]==21.2.0
+RUN pip install --no-cache-dir --compile -r requirements.txt
 
 # Create directories with proper permissions for non-root user
 RUN mkdir -p /app/static /app/media

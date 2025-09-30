@@ -4,7 +4,7 @@ requests  # Simple, yet elegant HTTP library for Python.
 django-cors-headers  # Django app for handling the server headers required for Cross-Origin Resource Sharing (CORS).
 python-dotenv  # Reads key-value pairs from a .env file and can set them as environment variables.
 psycopg2-binary  # PostgreSQL database adapter for Python.
-gunicorn  # Python WSGI HTTP Server for UNIX to deploy Django applications in production.
+gunicorn[gevent]>=23.0.0  # Python WSGI HTTP Server for UNIX with async support for production deployments.
 # Azure Monitor dependencies - using OpenCensus for better Python 3.9 compatibility
 opencensus-ext-azure>=1.1.13  # Azure integration for OpenCensus distributed tracing and monitoring.
 opencensus-ext-logging>=0.1.1  # Logging integration for OpenCensus tracing to capture log events.
