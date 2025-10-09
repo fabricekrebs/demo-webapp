@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Upgrade pip to latest version
-RUN pip install --upgrade pip
+RUN python -m pip install --upgrade pip
 
 # Install Python dependencies with optimizations
 RUN pip install --no-cache-dir --compile -r requirements.txt
