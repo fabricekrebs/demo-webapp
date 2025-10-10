@@ -133,7 +133,8 @@ echo "🔒 SECURITY CHECKS"
 echo "=================="
 
 # pip-audit for dependency vulnerabilities
-run_test "Dependency vulnerability check (pip-audit)" "pip-audit"
+# Ignore GHSA-4xh5-x5gv-qwph for pip itself - Python 3.12 has PEP 706 protection
+run_test "Dependency vulnerability check (pip-audit)" "pip-audit --ignore-vuln GHSA-4xh5-x5gv-qwph"
 
 # Bandit security linting
 run_test "Security linting check (bandit)" "bandit -r . -x tests/,venv/,.venv/,static/ -f txt"
