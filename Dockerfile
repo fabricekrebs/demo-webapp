@@ -32,6 +32,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Upgrade pip to latest version
+# Note: GHSA-4xh5-x5gv-qwph vulnerability exists in pip 25.2, but Python 3.12 has PEP 706 protection
 RUN python -m pip install --upgrade pip
 
 # Install Python dependencies with optimizations
