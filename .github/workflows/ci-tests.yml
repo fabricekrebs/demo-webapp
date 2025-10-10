@@ -157,7 +157,8 @@ jobs:
 
     - name: Run pip-audit (dependency vulnerability check)
       run: |
-        pip-audit
+        # Ignore GHSA-4xh5-x5gv-qwph for pip itself - Python 3.12 has PEP 706 protection
+        pip-audit --ignore-vuln GHSA-4xh5-x5gv-qwph
 
     - name: Run Bandit (security linting)
       run: |
