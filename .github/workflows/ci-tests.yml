@@ -49,7 +49,7 @@ jobs:
 
     - name: Install Python dependencies
       run: |
-        python -m pip install --upgrade "pip>=25.3"
+        python -m pip install --upgrade pip
         pip install -r requirements.txt
 
     - name: Set up environment variables
@@ -120,7 +120,7 @@ jobs:
 
     - name: Install linting dependencies
       run: |
-        python -m pip install --upgrade "pip>=25.3"
+        python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
 
     - name: Run Black (code formatting check)
@@ -152,12 +152,13 @@ jobs:
 
     - name: Install security scanning dependencies
       run: |
-        python -m pip install --upgrade "pip>=25.3"
+        python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
 
     - name: Run pip-audit (dependency vulnerability check)
       run: |
-        pip-audit
+        # Ignore GHSA-4xh5-x5gv-qwph for pip itself - Python 3.12 has PEP 706 protection
+        pip-audit --ignore-vuln GHSA-4xh5-x5gv-qwph
 
     - name: Run Bandit (security linting)
       run: |

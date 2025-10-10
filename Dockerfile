@@ -31,8 +31,8 @@ RUN apt-get update && apt-get install -y \
 # Copy requirements first for better Docker layer caching
 COPY requirements.txt .
 
-# Upgrade pip to version >=25.3 (fixes GHSA-4xh5-x5gv-qwph)
-RUN python -m pip install --upgrade "pip>=25.3"
+# Upgrade pip to latest version
+RUN python -m pip install --upgrade pip
 
 # Install Python dependencies with optimizations
 RUN pip install --no-cache-dir --compile -r requirements.txt
