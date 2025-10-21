@@ -5,7 +5,7 @@
 # Using pip-audit as primary security scanner (more reliable than safety)
 pip-audit>=2.6.0  # Modern security vulnerability scanner
 # safety==3.2.7  # Alternative security scanner (commented due to typer compatibility issues)
-typer==0.19.2  # Pin typer version for compatibility
+typer==0.20.0  # Pin typer version for compatibility
 rich==14.2.0  # Pin rich version for compatibility
 packaging>=22.0  # Compatible packaging version for modern tools
 black>=22.0.0  # Code formatter
