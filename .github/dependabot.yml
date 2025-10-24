@@ -8,5 +8,10 @@ updates:
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "monday"
     target-branch: "develop"
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
