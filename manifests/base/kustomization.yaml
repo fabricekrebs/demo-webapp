@@ -13,5 +13,6 @@ resources:
   - service.yaml
   - configmap.yaml
   - ingress.yaml
+  - containernetworklog.yaml
 
 # No images section here - overlays will handle image tags

@@ -1,0 +1,30 @@
+apiVersion: acn.azure.com/v1alpha1
+kind: ContainerNetworkLog
+metadata:
+  name: demo-webapp-cnl # Cluster scoped
+spec:
+  includefilters:
+    - name: egress-filter # Capture egress traffic from demo-webapp namespace
+      from:
+        namespacedPod:
+          - demo-webapp/demo-webapp-
+          - kube-system/coredns-
+      protocol:
+        - tcp
+        - udp
+        - dns
+      verdict:
+        - forwarded
+        - dropped
+
+    - name: ingress-filter # Capture ingress traffic to demo-webapp namespace
+      to:
+        namespacedPod:
+          - demo-webapp/demo-webapp-
+          - kube-system/coredns-
+      protocol:
+        - tcp
+        - udp
+      verdict:
+        - forwarded
+        - dropped
